@@ -298,7 +298,10 @@ def case_table_rows(df, mod, snr_levels, methods, snr_col):
 # Load data
 # ---------------------------------------------------------------------------
 
-df1 = pd.read_csv(TABLES_DIR / "results_case1_no_isi.csv")
+df1 = pd.read_csv(TABLES_DIR / "results.csv")  # run_case1_no_isi.py's real output filename --
+# "results_case1_no_isi.csv" is a differently-named legacy copy kept in sync manually; a
+# code-correctness pass found this script had been silently reading that stale copy while
+# report.md's hand-written tables were updated separately, risking future drift between the two.
 df2 = pd.read_csv(TABLES_DIR / "results_case2_isi.csv")
 df_16qam = None
 try:
@@ -394,7 +397,7 @@ meta_table.alignment = WD_TABLE_ALIGNMENT.CENTER
 meta_rows = [
     ("Scope", "4 case studies + 3 connecting analyses (severity sweep, boundary-aware loss, compute cost)"),
     ("This document", "Self-contained — includes full methodology, results, verification, and conclusions"),
-    ("Verification", "58-test regression suite (CI-enforced) · 6 real bugs found, root-caused, and fixed (Section 4.2, 6.2, 4.9, 11) · reviewed via an adversarial self-critique pass"),
+    ("Verification", "63-test regression suite (CI-enforced) · 7 real bugs found, root-caused, and fixed (Section 4.2, 6.2, 4.9, 3.7, 11) · reviewed via two adversarial self-critique passes"),
     ("Source code", "Available on request — see Appendix for the experiment/module file list"),
 ]
 for i, (k, v) in enumerate(meta_rows):
@@ -433,19 +436,23 @@ add_para(doc,
     "channel, and higher-order (16-QAM) modulation — connected by three targeted follow-up analyses "
     "(an ISI-severity sweep, a boundary-aware loss-function test, and a compute-cost analysis). The "
     "central finding is that improved output SNR does not imply improved bit-error-rate (BER): on a "
-    "memoryless channel, every method tested is strictly worse than doing nothing (56/56 "
-    "comparisons), because the raw received sample is already a sufficient statistic for detection; "
+    "memoryless channel, every method tested is never better than doing nothing (strictly worse in "
+    "52 of 56 comparisons, tied in the remaining 4), because the raw received sample is already a "
+    "sufficient statistic for detection; "
     "once real channel memory exists, the CNN reverses and can improve BER by up to 610× — though "
     "the classical adaptive filters (LMS/NLMS) remain largely unhelpful specifically for BPSK even "
     "with real ISI present — with the CNN's advantage scaling with decision-boundary crowding "
-    "(BPSK < QPSK < 16-QAM). Six real "
+    "(BPSK < QPSK < 16-QAM), but shown to be substantially channel-specific rather than a general "
+    "equalization capability once tested on channels the CNN was not trained on. Seven real "
     "implementation bugs, a missing standard baseline (Zero-Forcing), and several correlational "
-    "hypotheses were found, root-caused, and — in two cases — directly confirmed or refuted via "
-    "targeted interventions, using a discipline of checking every anomalous result against its "
-    "definitional identity before accepting it. The practical recommendation is channel- and "
-    "modulation-dependent: a CNN is preferred whenever real multipath structure exists and compute "
-    "allows; RLS, once given the same numerical hardening as LMS/NLMS, is the strongest classical "
-    "alternative under tight compute budgets."
+    "hypotheses were found, root-caused, and — in multiple cases — directly confirmed or refuted via "
+    "targeted interventions (one of which overturned an earlier, statistically well-supported but "
+    "incorrect root-cause conclusion), using a discipline of checking every anomalous result against "
+    "its definitional identity before accepting it. The practical recommendation is channel- and "
+    "modulation-dependent: a CNN is preferred whenever real multipath structure exists, compute "
+    "allows, and the deployment channel matches (or is retrained on) the training channel; RLS, once "
+    "given the same numerical hardening as LMS/NLMS, is the strongest classical alternative under "
+    "tight compute budgets."
 )
 add_para(doc,
     "Index Terms — Adaptive filtering, LMS, NLMS, RLS, convolutional neural network, denoising "
@@ -505,10 +512,11 @@ add_callout(doc,
 )
 add_para(doc, "Key results, in the order they were established:")
 add_numbered(doc, [
-    "Case Study 1 (memoryless AWGN, no ISI): every method — LMS, NLMS, CNN, Hybrid — produces "
-    "STRICTLY WORSE BER than doing nothing at all, despite large apparent SNR gains, because the "
-    "raw received sample is already the Bayes-optimal decision variable when the channel has no "
-    "memory (verified across 56/56 comparisons).",
+    "Case Study 1 (memoryless AWGN, no ISI): every method — LMS, NLMS, CNN, Hybrid — is NEVER "
+    "BETTER than doing nothing at all, despite large apparent SNR gains, because the raw received "
+    "sample is already the Bayes-optimal decision variable when the channel has no memory (strictly "
+    "worse in 52/56 comparisons, tied in the remaining 4 — CNN specifically, at 15/20dB, after its "
+    "reconstruction-bug fix eliminated its floor down to No-Processing's already-zero error count).",
     "Case Study 2 (real multipath ISI): the result can reverse — QPSK shows equalization winning "
     "by up to ~470x — but BPSK barely benefits and classical filters are frequently worse than "
     "doing nothing even with ISI present. Getting this result trustworthy required finding and "
@@ -537,10 +545,18 @@ add_numbered(doc, [
     "intervention: NLMS's instantaneous-power step-size normalization measurably inflates its "
     "effective step size during channel fades; flooring that normalization measurably closes the "
     "gap in every tested cell and flips two of four from \"DD doesn't help\" to \"DD helps.\"",
-    "The high-SNR CNN error floor was strongly evidenced as a window/overlap-add reconstruction "
-    "artifact (81.1% same-position overlap between loss functions, χ²=168.0 p=3.5×10⁻³⁶ clustering "
-    "by window phase) — but the named fix (reweighting the overlap-add) was tested and found NOT "
-    "to close it, a negative result reported honestly rather than omitted.",
+    "The high-SNR CNN error floor was first attributed, on strong correlational grounds (81.1% "
+    "same-position overlap between loss functions, χ²=168.0 p=3.5×10⁻³⁶ clustering by window "
+    "phase), to a window/overlap-add reconstruction artifact — a conclusion a later "
+    "code-correctness critique pass found to be WRONG: the real cause was a bug (this project's "
+    "seventh) that zero-filled a signal's uncovered tail samples. Fixing it collapsed BPSK's floor "
+    "and QPSK's floor at 15-20dB almost entirely, leaving only a small, genuine residual at QPSK "
+    "10dB now explained by high-noise-magnitude samples.",
+    "An outside-reviewer critique pass found every CNN result trains and tests on the exact same "
+    "known channel, unlike LMS/NLMS/MMSE/ZF which all re-estimate or are handed the channel "
+    "per-trial. Testing this directly confirmed a real generalization gap: a CNN frozen on one "
+    "channel degrades up to 129.71x on a held-out channel (QPSK, 10dB) where LMS/NLMS degrade only "
+    "1.17-1.41x — revising, not overturning, the project's practical recommendation.",
     "Training the CNN once (rather than across several seeds) showed no evidence of a problem in "
     "one narrow, tested regime: training-draw variance was smaller than test-time Monte Carlo "
     "variance in all 4 conditions tested (Case Study 1's CNN only, 2 SNR points) — not yet a "
@@ -719,9 +735,11 @@ add_figure(doc, c1fig / "ber_vs_snr_QPSK.png", "BER vs Input SNR, QPSK, Case Stu
 doc.add_page_break()
 add_heading(doc, "3.6 Key Finding: SNR Improvement Does Not Imply BER Improvement", level=2)
 add_callout(doc,
-    "Every single method, at every SNR level, for both modulations — 56/56 comparisons — produces "
-    "strictly worse BER than doing nothing at all, despite CNN posting up to +18.74dB of apparent "
-    "SNR gain. Verified exhaustively, not sampled."
+    "Every single method, at every SNR level, for both modulations, is never better than doing "
+    "nothing at all — strictly worse in 52/56 comparisons, tied (both zero errors) in the "
+    "remaining 4 — despite CNN posting up to +18.92dB of apparent SNR gain. Verified exhaustively, "
+    "not sampled. The 4 ties are CNN at BPSK/QPSK's two highest SNRs, after Section 3.7's "
+    "reconstruction-bug fix collapsed its floor there to exactly 0."
 )
 add_para(doc,
     "Under a memoryless AWGN model, the raw received sample is already a sufficient statistic for "
@@ -763,37 +781,48 @@ add_para(doc,
     "detail: report/findings_boundary_aware_loss.md."
 )
 add_callout(doc,
-    "Strongly evidenced since (correlational, not interventional): the loss-independent high-SNR "
-    "floor is consistent with the CNN's window/overlap-add reconstruction — 81.1% same-position "
-    "overlap between MSE and Hinge, a statistically significant (χ²=168.0, p=3.5×10⁻³⁶) non-uniform "
-    "clustering by window phase, and only 15.1% overlap with No-Processing's own errors (weighing "
-    "against \"unfixable noise\")."
+    "CORRECTED FINDING. This floor was first attributed, on strong correlational grounds (81.1% "
+    "same-position overlap between MSE/Hinge, χ²=168.0 p=3.5×10⁻³⁶ non-uniform phase clustering, "
+    "only 15.1% overlap with No-Processing), to a window/overlap-add reconstruction artifact. A "
+    "later code-correctness critique pass found the real cause: a bug, not a reconstruction "
+    "property — this project's SEVENTH real bug."
 )
 add_para(doc,
-    "Position-level tracking of every floor error (`report/findings_cnn_high_snr_floor.md`) found: "
-    "(1) MSE and Hinge fail at the same symbol position 81.1% of the time (98.8-100% for BPSK) — far "
-    "beyond chance given how sparse these errors are; (2) those positions cluster non-uniformly within "
-    "the window-overlap cycle (symbol_index mod 64), declining monotonically from window-start to "
-    "window-end (317/306/205/75 across four quartiles), confirmed against the uniform null by a "
-    "chi-square test; (3) only 15.1% of these positions were also wrong for No-Processing's raw "
-    "hard-decision — 84.9% of the time the CNN introduces a new error rather than failing on an "
-    "already-lost sample; (4) noise magnitude at these positions is only mildly elevated (1.39-1.64x "
-    "typical), not the large outlier a \"structurally hard sample\" explanation would predict. Together "
-    "this points to a genuine, loss-independent, position-dependent reconstruction weak spot — but no "
-    "counterfactual (changing the overlap-add scheme and confirming the floor shrinks) was run, so "
-    "this is the best-supported explanation given every measurement taken, not a demonstrated cause."
+    "`reconstruct_from_windows` (`src/cnn_autoencoder.py`) silently left any trailing samples not "
+    "covered by a full window at their initialized value of exactly 0.0 — for this diagnostic's "
+    "configuration, the last 40 samples of every processed signal, every trial. A hard-decision "
+    "demodulator reads a raw 0.0 as a fixed, deterministic bit (BPSK's real>=0 rule always decides "
+    "bit 1) regardless of what was transmitted — a constant, SNR-independent error source hiding "
+    "exactly in the 10-20dB range where a \"floor\" would be visible. Fixed by giving "
+    "reconstruct_from_windows a fallback array (the noisy input) so uncovered positions pass "
+    "through unmodified instead of zero — matching the convention src/mmse_equalizer.py already "
+    "used. Five new regression tests (tests/test_cnn_autoencoder.py) lock in both the gap and the fix."
 )
 add_callout(doc,
-    "The named intervention was then actually tested — and produced a NEGATIVE result, reported "
-    "honestly. A triangular overlap-add weighting (downweighting each window's own edges) did NOT "
-    "shrink the floor: BPSK error counts were identical at every SNR tested; QPSK was unchanged or "
-    "very slightly WORSE at 10dB. The positional clustering is real; the proposed fix doesn't work."
+    "Re-running the exact diagnostic with the fix: BPSK's floor (a constant 83/100,000 errors at "
+    "10, 15, AND 20dB) collapses to 1/100,000 and 0/100,000. QPSK's floor at 15-20dB (161/200,000) "
+    "collapses completely to 0. The phase-clustering statistic recomputes to χ²≈0.74 (p≈0.86, "
+    "indistinguishable from uniform) on the corrected error population — the original χ²=168.0 "
+    "result was itself manufactured by the bug: the always-wrong zero-filled tail sits at a fixed, "
+    "narrow range of window-phase values, fabricating spurious clustering out of deterministic "
+    "tail errors."
 )
 add_para(doc,
-    "This suggests the degradation is more likely baked into the window predictions themselves near "
-    "their edges (a receptive-field/boundary effect inside the Conv1D layers) than in how "
-    "already-computed predictions get blended afterward, which reweighting cannot address. The WHERE "
-    "of this floor is confirmed; a working fix for it remains an open question."
+    "One genuine, smaller residual floor survives the fix, at QPSK 10dB only (365→218/200,000, a "
+    "real ~40% reduction, not full elimination). Re-examining just this population now points to "
+    "the OTHER original hypothesis: 43.7% of remaining error positions are also wrong for "
+    "No-Processing (up from 15.1%), and noise magnitude at these positions averages 2.83x typical "
+    "(up from 1.39-1.64x) — consistent with genuinely hard noise realizations, not a positional "
+    "artifact. This also retroactively explains the triangular-weighting intervention's negative "
+    "result below: it could never have worked, since reweighting cannot restore a sample no window "
+    "covers at all. Full corrected detail: report/findings_cnn_high_snr_floor.md."
+)
+add_callout(doc,
+    "The named intervention was tested before this correction, and produced a NEGATIVE result at "
+    "the time, reported honestly. A triangular overlap-add weighting (downweighting each window's "
+    "own edges) did NOT shrink the floor: BPSK error counts were identical at every SNR tested; "
+    "QPSK was unchanged or very slightly WORSE at 10dB. As the correction above explains, this was "
+    "the correct result for a different reason than originally understood."
 )
 
 add_heading(doc, "3.8 Follow-Up: Is Training the CNN Once Enough?", level=2)
@@ -1008,6 +1037,48 @@ add_para(doc,
     "tradeoff from Section 4.7, now shown to scale monotonically with how noise-blind the equalizer "
     "is (ZF > MMSE > adaptive/learned methods, in order of how much this cost is paid). Full detail: "
     "report/findings_zf_comparison.md."
+)
+
+doc.add_page_break()
+add_heading(doc, "4.11 Follow-Up: Does the CNN Generalize Across Channels, or Memorize the One It Was Trained On?", level=2)
+add_para(doc,
+    "An outside-reviewer critique pass — deliberately unfamiliar with this project's internal "
+    "history, briefed to find the single biggest weakness a viva examiner would raise — flagged a "
+    "gap no prior self-critique round had named: every CNN result in this report trains and "
+    "evaluates on the exact same known channel (MULTIPATH in run_case2_isi.py, reused verbatim for "
+    "training and every test trial). LMS/NLMS re-estimate the channel from the preamble every trial; "
+    "genie MMSE/ZF are handed the true channel every trial. Only the CNN implicitly assumes "
+    "train-time and test-time channels match — untested, despite feeding directly into Section 9.5's "
+    "central recommendation."
+)
+add_para(doc,
+    "One CNN is trained once per modulation on the matched (Case Study 2) channel, then evaluated — "
+    "with NO retraining — on five held-out channels differing in delay spread, tap count, and tap "
+    "phase (not just a severity-scaled version of the same taps, which Section 5 already covers and "
+    "always trains/tests at matched severity). LMS, NLMS, and genie MMSE are run on the identical "
+    "held-out channels as a like-for-like reference, since they adapt/measure regardless of which "
+    "channel is presented (experiments/test_cnn_channel_generalization.py, reduced scale)."
+)
+add_callout(doc,
+    "CONFIRMED: the CNN's advantage is substantially channel-specific, not a general equalization "
+    "capability. At QPSK 10dB, a channel with sign-flipped tap phases degrades CNN BER by 129.71x "
+    "relative to its own matched-channel performance (1.65e-3 -> 2.14e-1), while LMS and NLMS on "
+    "the IDENTICAL held-out channel degrade only 1.17x and 1.41x. Across all five held-out channels "
+    "at this SNR, CNN degradation ranges 5.16x-129.71x versus LMS/NLMS's tight 0.67x-1.41x band."
+)
+add_para(doc,
+    "The held-out channel is objectively somewhat harder for every method (even No-Processing "
+    "degrades 6.19x there), but catastrophically so only for the frozen CNN. The effect is smaller "
+    "at BPSK (worst-case 2.08x vs. LMS/NLMS's 0.98-1.10x), consistent with BPSK's wide margin being "
+    "less sensitive to mechanisms this project keeps finding QPSK sensitive to (Sections 3.7, 4.6, "
+    "4.7, 7), and vanishes at 20dB where every method reaches near-zero BER on every channel."
+)
+add_callout(doc,
+    "This does not overturn Case Study 2's headline finding -- the CNN still substantially "
+    "outperforms LMS/NLMS whenever train and test channels match, the condition every prior case "
+    "study actually tested. But that advantage has been measured under an unrealistic best case: a "
+    "receiver that already knows, implicitly, exactly which channel it will face. Section 9.5's "
+    "recommendation is revised accordingly. Full detail: report/findings_cnn_channel_generalization.md."
 )
 
 doc.add_page_break()
@@ -1307,7 +1378,7 @@ add_para(doc,
 )
 rec_rows = [
     ["Clean/near-memoryless channel, any modulation", "No-Processing (do nothing)",
-     "Case Study 1: every method is strictly worse than doing nothing, 56/56 comparisons (§3.5)."],
+     "Case Study 1: no method ever beats doing nothing -- strictly worse in 52/56 comparisons, tied in the remaining 4 (§3.6)."],
     ["Real ISI, BPSK", "CNN if compute allows; else No-Processing",
      "§4.6: BPSK barely benefits from any equalizer; only CNN shows a small, consistent edge (1.1-1.8x)."],
     ["Real ISI, QPSK or 16-QAM", "CNN",
@@ -1320,15 +1391,19 @@ rec_rows = [
      "§6.4: LMS-DD beats Frozen by 29-40%; NLMS-DD needs the normalization floor to do the same."],
     ["Closed-form reference, channel knowable", "MMSE over ZF",
      "§4.10: ZF (no noise-awareness) is consistently the worst of the three linear methods for QPSK."],
+    ["Deployment channel may drift from the training channel", "Retrain the CNN on the deployment channel, or budget for degraded BER",
+     "§4.11: a CNN frozen on one channel degrades up to 129.71x on a held-out channel (QPSK, 10dB) vs. 1.17-1.41x for LMS/NLMS on the same channel."],
 ]
 add_table_caption(doc, "Practical decision matrix: situation, recommendation, and supporting evidence")
 add_table(doc, ["Situation", "Recommended method", "Why (evidence)"], rec_rows, font_size=8)
 doc.add_paragraph()
 add_callout(doc,
     "If forced to name one single default: a CNN denoising autoencoder, deployed only when the "
-    "channel has real multipath/ISI structure and the platform has at least applications-processor-"
-    "class compute. It never loses to No-Processing once real channel structure exists, and its "
-    "advantage grows, not shrinks, as the situation gets more realistic."
+    "channel has real multipath/ISI structure, the deployment channel is expected to match (or be "
+    "retrained on) the training channel, and the platform has at least applications-processor-class "
+    "compute. It never loses to No-Processing once real channel structure exists, and its advantage "
+    "grows, not shrinks, as the situation gets more realistic -- but that advantage is measurably "
+    "channel-specific (§4.11), not a general equalization capability."
 )
 add_para(doc,
     "How this compares to published work: literature on classical adaptive equalizers [1], [3], [4] "
@@ -1366,7 +1441,7 @@ add_numbered(doc, [
     "testing) materially changed which findings survived scrutiny and should be standard practice.",
     "Definitional identities are a cheap, powerful bug-finder — all three Case Study 2 bugs, plus "
     "the fourth found in Case Study 3, were caught by knowing what a value must equal by definition.",
-    "A regression test suite (tests/, 58 tests) now codifies every invariant found this way.",
+    "A regression test suite (tests/, 63 tests) now codifies every invariant found this way.",
     "A design decision's stated justification can be narrower, or broader, than what was actually "
     "verified — only testing the untested case reveals which (Case Study 3).",
     "A mechanistic explanation is only as strong as the experiment that tests it — the boundary-"
@@ -1384,11 +1459,19 @@ add_numbered(doc, [
     "parameter with zero effect on any other experiment) measurably closed the Frozen-vs-DD gap in "
     "every tested cell and flipped two of four from \"DD doesn't help\" to \"DD measurably helps\" "
     "— turning a best-supported explanation into a demonstrated cause.",
-    "The same discipline was applied to a second previously-open question, honestly reporting a "
-    "NEGATIVE result: the high-SNR CNN error floor's positional clustering (χ²=168.0, p=3.5×10⁻³⁶) "
-    "remains real, but the named fix (reweighting the overlap-add reconstruction) was tested and "
-    "did NOT close it — reporting a tested fix that doesn't work is as important as reporting one "
-    "that does.",
+    "The same discipline was applied to a second previously-open question — and this time the "
+    "'confirmed' root cause turned out to be wrong. The high-SNR CNN error floor was first "
+    "attributed, on strong correlational grounds (χ²=168.0, p=3.5×10⁻³⁶ positional clustering), to "
+    "a window/overlap-add reconstruction artifact. A code-correctness critique pass found the real "
+    "cause: reconstruct_from_windows silently zero-filled trailing samples no window covered, read "
+    "by a hard-decision demodulator as a fixed, wrong-half-the-time bit — this project's SEVENTH "
+    "real bug. Fixing it collapsed BPSK's floor (constant 83/100,000 errors at 10-20dB) to "
+    "0-1/100,000, and QPSK's floor at 15-20dB to 0; the clustering statistic recomputes to χ²≈0.74 "
+    "(p≈0.86, indistinguishable from uniform) on the corrected data — the original result was itself "
+    "manufactured by the bug. A smaller, genuine residual floor survives only at QPSK 10dB, now "
+    "explained by high-noise-magnitude samples rather than reconstruction position. The negative "
+    "result on the triangular-weighting intervention was correct, but for a different reason than "
+    "understood at the time: reweighting cannot fix a sample no window covers at all.",
     "This project's single-training-draw practice was given a first quantitative check, in one "
     "narrow regime, not validated project-wide: "
     "training-draw variance is consistently smaller than test-time Monte Carlo variance across all "
@@ -1411,6 +1494,16 @@ add_numbered(doc, [
     "comparisons gap in Section 4.5 (now corrected with both Bonferroni and Benjamini-Hochberg), "
     "and the preamble-drift correction above — each fixed, corrected, or explicitly caveated rather "
     "than left unaddressed.",
+    "An outside-reviewer critique pass (deliberately unfamiliar with this project's internal "
+    "history) found a gap none of the prior self-critique rounds had named: every CNN result trains "
+    "and tests on the exact same known channel, while LMS/NLMS/MMSE/ZF all re-estimate or are "
+    "handed the channel per-trial regardless. Testing this directly confirmed it is a real, "
+    "substantial effect: a CNN frozen after training on one channel degrades up to 129.71x on a "
+    "held-out channel with a different tap-phase structure (QPSK, 10dB), while LMS and NLMS on the "
+    "identical held-out channel degrade only 1.17x and 1.41x. This revises, rather than overturns, "
+    "Section 9.5's practical recommendation: the CNN's advantage is real when training and "
+    "deployment channels match, but should not be assumed to survive a channel that drifts from "
+    "that training distribution.",
 ])
 
 doc.add_page_break()
@@ -1453,6 +1546,17 @@ add_bullets(doc, [
     "exploratory family) leaves 7/9 significant. The qualitative conclusion (a small, practically-"
     "negligible floor) is unaffected, but NLMS's specific high-SNR regression is not statistically "
     "distinguishable from chance under either correction.",
+    "The reconstruction-tail-fill bug (Section 3.7's correction, this project's seventh) affects any "
+    "CNN/Hybrid experiment whose signal length isn't an exact multiple of the 64-sample stride "
+    "relative to the 128-sample window, not just the diagnostic that found it. Case Study 1 (100,000 "
+    "symbols, SPS=1, a 32-sample uncovered tail) HAS been re-run with the fix and its tables reflect "
+    "it: CNN's floor at both modulations' 15-20dB is now exactly 0 (previously 1.51e-4/1.71e-4); "
+    "Hybrid's floor dropped substantially but not to zero, now matching LMS's own residual "
+    "misadjustment floor. Case Study 4 (25,000 symbols, SPS=4, also a 32-sample tail) and the "
+    "boundary-aware-loss/training-variance follow-ups (25,000/15,000 symbols, SPS=1) have NOT yet "
+    "been re-run and still show pre-fix numbers — Case Study 2, the severity sweep, and Case Study "
+    "3's SPS=4 portion use signal lengths that divide the stride exactly and were never affected "
+    "regardless of when they were run.",
 ])
 
 add_heading(doc, "Named, Scoped-Out Future Work", level=2)
@@ -1521,7 +1625,7 @@ doc.add_page_break()
 # Appendix
 # ===========================================================================
 add_heading(doc, "Appendix: Project Structure & Regression Test Suite", level=1)
-add_para(doc, "A CI-enforced, 58-test regression suite (tests/, ~30s to run, run automatically on "
+add_para(doc, "A CI-enforced, 63-test regression suite (tests/, ~40s to run, run automatically on "
     "every push via GitHub Actions) codifies every invariant discovered during this project:")
 add_bullets(doc, [
     "test_lms_stability.py — LMS/NLMS never diverge below No-Processing; DD mode off by default.",
@@ -1534,6 +1638,7 @@ add_bullets(doc, [
     "and correctly fixes the direct path unless vary_direct_path=True (added during the "
     "self-critique pass — previously zero coverage on this function).",
     "test_mmse_equalizer.py — genie MMSE never loses to No-Processing; ZF converges to MMSE as noise vanishes and recovers symbols near-perfectly at negligible noise (added alongside Section 4.10's ZF follow-up).",
+    "test_cnn_autoencoder.py — reconstruct_from_windows' uncovered-tail gap and its fallback fix are locked in with 5 tests (skipped, not failed, when TensorFlow isn't installed, matching this project's lightweight-CI convention) — previously zero coverage on this function, the gap that produced Section 3.7's seventh bug.",
     "test_no_leakage.py — no train/test bit-sequence collisions.",
     "test_metrics.py — BER/error-count consistency, rule-of-three sanity.",
 ])
@@ -1543,7 +1648,8 @@ add_para(doc,
     "run_timevarying_channel.py, run_16qam_comparison.py, run_case1_boundary_loss.py, "
     "compute_cost_analysis.py, run_rls_comparison.py, run_zf_comparison.py, "
     "diagnose_lms_nlms_asymmetry.py, diagnose_cnn_high_snr_floor.py, diagnose_training_variance.py, "
-    "test_nlms_floor_intervention.py, test_cnn_overlap_weighting_intervention.py), with shared "
+    "test_nlms_floor_intervention.py, test_cnn_overlap_weighting_intervention.py, "
+    "test_cnn_channel_generalization.py), with shared "
     "logic in src/ (signal_gen.py, channel.py, lms_filter.py, nlms_filter.py, rls_filter.py, "
     "mmse_equalizer.py, utils.py, metrics.py) and a CNN-specific module (cnn_boundary_aware.py). "
     "Raw results are stored as CSVs under results/tables/ and figures under results/figures/, "

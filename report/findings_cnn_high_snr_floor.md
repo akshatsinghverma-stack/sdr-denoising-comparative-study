@@ -8,6 +8,80 @@ population of structurally hard-to-denoise samples ... not root-caused in
 this diagnostic." New file only: `experiments/diagnose_cnn_high_snr_floor.py`.
 No existing module modified.
 
+## Correction (found via a later code-correctness critique pass)
+
+**Everything below this notice, up to "Correction: re-running with the fix,"
+describes the original analysis and its conclusion — that the floor was a
+window/overlap-add reconstruction artifact. That conclusion was wrong.** A
+subsequent independent code-correctness review (an agent briefed to search
+`src/` directly for undiscovered bugs, not to re-read this document's
+conclusions) found that `reconstruct_from_windows` (`src/cnn_autoencoder.py`)
+silently left any trailing samples not covered by a full window at their
+initialized value of exactly `0.0` — for this diagnostic's 25,000-symbol,
+SPS=1 configuration, the last 40 samples of every processed signal, every
+trial (32 samples for the main case studies' 100,000-symbol configuration).
+A hard-decision demodulator reads a raw `0.0` as a fixed, deterministic bit
+(BPSK's `real >= 0` rule always decides bit 1) regardless of what was
+transmitted — a constant, SNR-independent error source sitting exactly in
+the SNR range where a "floor" above the vanishing noise-driven error rate
+would be visible. This is this project's **seventh real bug**.
+
+Fixed by giving `reconstruct_from_windows` a `fallback` array (the noisy
+input) to fill genuinely uncovered positions instead of leaving them at
+zero — matching the "edge samples pass through unmodified" convention
+`src/mmse_equalizer.py` already used elsewhere. `denoise_signal` now passes
+this by default. Five new regression tests (`tests/test_cnn_autoencoder.py`)
+lock in both the tail-coverage gap's existence (previously zero test
+coverage on this function) and the fix's behavior.
+
+### Correction: re-running with the fix
+
+Re-running `experiments/diagnose_cnn_high_snr_floor.py` unchanged except for
+the fix gives a dramatically different picture:
+
+| | BPSK 10dB | BPSK 15dB | BPSK 20dB | QPSK 10dB | QPSK 15dB | QPSK 20dB |
+|---|---|---|---|---|---|---|
+| Errors, before fix (MSE) | 83/100,000 | 83/100,000 | 83/100,000 | 365/200,000 | 161/200,000 | 161/200,000 |
+| Errors, after fix (MSE) | 1/100,000 | 0/100,000 | 0/100,000 | 218/200,000 | 0/200,000 | 0/200,000 |
+
+**BPSK's "floor" — a constant 83 errors at every one of 10/15/20dB, the
+single clearest signature of a floor in the whole diagnostic — collapses
+almost entirely.** QPSK's floor at 15-20dB also collapses completely to
+zero. Recomputing the phase-clustering statistic (finding 2 below) on the
+post-fix error population gives quartile counts of 77/81/75/85 (out of
+318 total) — **χ²≈0.74, p≈0.86**, statistically indistinguishable from
+uniform, versus the original χ²=168.0, p=3.5×10⁻³⁶. The original clustering
+result was itself manufactured by the bug: the always-wrong, zero-filled
+tail sits at a small, fixed range of `symbol_index mod 64` values (fixed
+by the signal's length, not by anything about denoising), which is exactly
+what would fabricate spurious non-uniform clustering out of a handful of
+deterministic tail errors sitting at the same position every trial.
+
+**One genuine, smaller residual floor survives the fix, at QPSK 10dB only**
+(365→218/200,000, a real ~40% reduction, not full elimination). Re-examining
+just this remaining population now points to hypothesis 2 (below), not
+hypothesis 1: 43.7% of remaining error positions are also wrong for
+No-Processing (up from 15.1% pre-fix), and the noise magnitude at these
+positions averages 2.83x the trial's typical level (up from 1.39-1.64x) —
+consistent with a small population of genuinely hard noise realizations,
+not a positional reconstruction artifact.
+
+**This also retroactively explains the negative intervention result below**:
+the triangular overlap-add weighting was tested and found not to shrink the
+floor. That is exactly what should happen if the floor is dominated by a
+zero-filled tail no window covers at all — reweighting only redistributes
+influence among windows that already cover a sample, and structurally cannot
+touch a position with zero coverage. The intervention's negative result was
+correct; the diagnosis of what it was testing against was not.
+
+The analysis below is preserved as originally written, for transparency
+about what the first-pass (wrong) conclusion was and how it was reached —
+it should now be read as "strong correlational evidence for a mistaken
+hypothesis," a useful cautionary example in its own right (see report.md
+Conclusion #9), not as a currently-endorsed explanation.
+
+---
+
 ## The two candidate explanations being distinguished
 
 1. **Window/overlap-add reconstruction artifact**: the CNN operates on
@@ -84,7 +158,7 @@ very slightly *worse*, not better, at 10dB (98 errors uniform vs. 100 triangular
 bits) — the opposite direction of the predicted effect, though small enough to plausibly be noise
 at this scale.
 
-## Conclusion
+## Conclusion (original, pre-correction — see the correction notice at the top of this file)
 
 **The positional clustering finding stands — it is real, statistically significant, and not an
 artifact of chance — but the specific proposed fix (reweighting the overlap-add) does not close the
@@ -101,3 +175,8 @@ blended afterward, which reweighting cannot fix because it only changes how alre
 predictions are combined, not the predictions themselves. This remains a specific, evidenced,
 partially-open question rather than either a fully solved one or an untested guess: the *where*
 is confirmed; the *why*, and a working fix, are not.
+
+**As the correction notice at the top of this file explains, this conclusion turned out to be
+wrong**: the clustering was manufactured by a zero-fill bug in `reconstruct_from_windows`, not a
+property of the reconstruction scheme. See "Correction: re-running with the fix" above for what
+actually explains the floor.

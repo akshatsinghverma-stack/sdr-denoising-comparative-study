@@ -59,7 +59,7 @@ def make_windows(signal_2ch: np.ndarray, window_len: int = 128, stride: int = 64
 
 def reconstruct_from_windows(windows: np.ndarray, original_len: int,
                              window_len: int = 128, stride: int = 64,
-                             weighting: str = "uniform"):
+                             weighting: str = "uniform", fallback: np.ndarray = None):
     """Overlap-add reconstruction from windowed predictions.
 
     Parameters
@@ -78,6 +78,21 @@ def reconstruct_from_windows(windows: np.ndarray, original_len: int,
         it downweights each window's own edges relative to its center, so an
         interior sample's two overlapping predictions are blended favoring
         whichever window evaluated it closer to that window's own center.
+    fallback : np.ndarray, shape (original_len, 2), optional
+        Whenever (original_len - window_len) is not a multiple of stride,
+        the trailing `(original_len - window_len) % stride` samples are
+        never covered by any window (found via a code-correctness critique
+        pass -- previously silently left at 0.0, which a hard-decision
+        demodulator reads as a fixed, deterministic bit regardless of what
+        was transmitted, rather than "no denoising applied here" as intended
+        -- see report/findings_cnn_high_snr_floor.md's correction). If given,
+        those uncovered tail positions are filled from `fallback` (typically
+        the noisy input) instead of left at zero, matching the "edge samples
+        pass through unmodified" convention already used by
+        src/mmse_equalizer.py. If None, the tail is left at zero (only used
+        by the diagnostic in experiments/test_cnn_overlap_weighting_intervention.py,
+        which isolates the weighting scheme and is unaffected by this tail
+        either way since neither weighting covers it).
 
     Returns
     -------
@@ -99,9 +114,12 @@ def reconstruct_from_windows(windows: np.ndarray, original_len: int,
         output[s : s + window_len] += windows[i] * w[:, None]
         counts[s : s + window_len] += w
 
+    uncovered = counts == 0
     # Avoid division by zero for tail samples not covered by any window
-    counts[counts == 0] = 1.0
+    counts[uncovered] = 1.0
     output /= counts[:, None]
+    if fallback is not None:
+        output[uncovered] = fallback[uncovered]
     return output
 
 
@@ -193,6 +211,11 @@ def denoise_signal(model, noisy_signal: np.ndarray,
     weighting: passed through to reconstruct_from_windows (default "uniform"
     = original, unchanged behavior).
 
+    Any trailing samples not covered by a full window (whenever
+    original_len - window_len isn't a multiple of stride) are filled from
+    the noisy input rather than left at zero -- see reconstruct_from_windows'
+    `fallback` parameter docstring.
+
     Returns complex IQ array of the same length as input.
     """
     n2 = _iq_to_real(noisy_signal)
@@ -201,5 +224,6 @@ def denoise_signal(model, noisy_signal: np.ndarray,
 
     pred_windows = model.predict(windows, verbose=0)
     reconstructed = reconstruct_from_windows(pred_windows, original_len,
-                                             window_len, stride, weighting=weighting)
+                                             window_len, stride, weighting=weighting,
+                                             fallback=n2)
     return _real_to_iq(reconstructed)

@@ -71,6 +71,7 @@ python experiments/test_nlms_floor_intervention.py      # falsification test for
 python experiments/test_nlms_floor_sensitivity.py       # sensitivity sweep for that intervention's floor value
 python experiments/diagnose_cnn_high_snr_floor.py       # root-causing the high-SNR CNN error floor
 python experiments/test_cnn_overlap_weighting_intervention.py  # tests a fix for the floor above (negative result)
+python experiments/test_cnn_channel_generalization.py   # does the CNN generalize across channels, or memorize one?
 python experiments/diagnose_training_variance.py        # test-time vs. training-draw BER variance
 ```
 
@@ -112,9 +113,10 @@ sdr_denoising_project/
 │   ├── test_nlms_floor_sensitivity.py  # Sensitivity sweep for the floor value used above
 │   ├── diagnose_cnn_high_snr_floor.py  # Root-causes the loss-independent high-SNR CNN floor
 │   ├── test_cnn_overlap_weighting_intervention.py  # Tests a fix for the floor above (negative result)
+│   ├── test_cnn_channel_generalization.py  # Does the CNN generalize across channels, or memorize one?
 │   ├── diagnose_training_variance.py   # Test-time vs. training-draw BER variance
 │   └── run_all.py                      # Alias of run_case1_no_isi.py
-├── tests/                        # Regression test suite (58 tests, ~30s) -- see below
+├── tests/                        # Regression test suite (63 tests, ~40s) -- see below
 ├── results/
 │   ├── figures/                  # One subdirectory per case study/analysis
 │   └── tables/                   # One or more CSVs per case study/analysis
@@ -156,9 +158,11 @@ sdr_denoising_project/
    is to the specific distortion that structure introduces. On a memoryless
    AWGN channel (Case Study 1), the raw received sample is already a
    sufficient statistic for symbol detection, so every method — LMS, NLMS,
-   CNN, Hybrid — produces *strictly worse* BER than doing nothing, despite
-   large apparent SNR gains (verified directly: the converged LMS filter's
-   tap weights match the theoretical Wiener shrinkage factor).
+   CNN, Hybrid — is *never better* than doing nothing (strictly worse in
+   52/56 comparisons, tied in the remaining 4 — CNN specifically, at the
+   two highest SNRs, once its own reconstruction bug was fixed, see finding
+   #10), despite large apparent SNR gains (verified directly: the converged
+   LMS filter's tap weights match the theoretical Wiener shrinkage factor).
 2. **Add real inter-symbol interference (Case Study 2) and the result can
    reverse sharply** — QPSK wins by up to ~470x with CNN — but BPSK barely
    benefits and classical filters are frequently *worse* than doing nothing
@@ -195,15 +199,17 @@ sdr_denoising_project/
    efficiency artifact, not an algorithmic one; the analytical MAC gap
    reasserts itself as a genuine microcontroller-vs-applications-processor
    deployment question.
-7. **Six real bugs were found and fixed** during this project (LMS
+7. **Seven real bugs were found and fixed** during this project (LMS
    step-size/divergence, a receiver matched-filter gain bug, an SNR
    calibration bug, a multipath-convolution causality bug, a
    decision-directed reliability gate that was silently dead code at
-   SPS>1, and — found via a deliberate adversarial self-critique pass late
-   in the project — an asymmetric RRC pulse-shaping filter), every one
-   caught by checking a value against what it must equal by definition. A
-   58-test regression suite (`tests/`), run automatically on every push via
-   GitHub Actions, now codifies all of them.
+   SPS>1, an asymmetric RRC pulse-shaping filter, and — found via a
+   code-correctness critique pass late in the project — a CNN window-
+   reconstruction bug that silently zero-filled any trailing samples no
+   window covered, read by a hard-decision demodulator as a fixed, wrong-
+   half-the-time bit), every one caught by checking a value against what it
+   must equal by definition. A 63-test regression suite (`tests/`), run
+   automatically on every push via GitHub Actions, now codifies all of them.
 8. **A four-agent adversarial self-critique pass** (statistical rigor, DSP
    correctness, code quality, and a skeptical outside reader, each briefed
    independently) surfaced and led to fixes for: the RRC filter bug above,
@@ -221,7 +227,10 @@ sdr_denoising_project/
    its decision-directed disadvantage on the time-varying channel,
    confirming that mechanism by direct test. Reweighting the CNN's
    overlap-add reconstruction did **not** close the high-SNR error floor —
-   reported as a negative result rather than omitted. Separately, RLS
+   reported as a negative result rather than omitted (and, per finding #10
+   below, this result turned out to be correct for a different reason than
+   originally thought: it couldn't have worked, since the floor it was
+   targeting was mostly a bug reweighting has no power to fix). Separately, RLS
    (Section 4.8 in [report/report.md](report/report.md)) was re-evaluated after adding
    Polyak/Ruppert tail-averaging (the same hardening LMS/NLMS already had):
    the corrected result reverses this project's own first-pass finding —
@@ -230,6 +239,37 @@ sdr_denoising_project/
    results file and corrected. A missing standard baseline, Zero-Forcing
    (ZF), was also added after comparing against published equalization
    literature rather than re-reading this project's own code.
+10. **A code-correctness critique pass found that the "confirmed" high-SNR
+    CNN error floor (finding #9) was itself mostly a bug, not a genuine
+    reconstruction artifact.** `reconstruct_from_windows` silently
+    zero-filled trailing samples no window covered; fixing it collapsed
+    BPSK's floor (a constant 83/100,000 errors at 10-20dB) to 0-1/100,000,
+    and QPSK's floor at 15-20dB (161/200,000) to 0/200,000. The statistically
+    significant positional-clustering evidence (χ²=168.0, p=3.5×10⁻³⁶) that
+    originally supported the reconstruction-artifact conclusion recomputes to
+    χ²≈0.74 (p≈0.86, indistinguishable from uniform) on the corrected error
+    population — the original result was manufactured by the bug. A smaller,
+    genuine residual floor survives only at QPSK 10dB, now better explained
+    by high-noise-magnitude samples than by reconstruction position. Case
+    Study 1's own headline results table was also re-run with the fix: CNN's
+    floor at BPSK/QPSK 15-20dB (previously 1.51e-4/1.71e-4) is now exactly 0,
+    tying No-Processing's already-zero count rather than falling short of it
+    — see finding #1's corrected wording above. See
+    [report/findings_cnn_high_snr_floor.md](report/findings_cnn_high_snr_floor.md).
+11. **An outside-reviewer critique pass — deliberately unfamiliar with this
+    project's history, briefed to find the single biggest weakness a viva
+    examiner would raise — found a gap none of the prior self-critique
+    rounds had named**: every CNN result trains and tests on the exact same
+    known channel, while LMS/NLMS/MMSE/ZF all re-estimate or are handed the
+    channel per-trial regardless. Testing this directly confirmed a real,
+    substantial effect: a CNN frozen after training on one channel degrades
+    up to 129.71x on a held-out channel with a different tap-phase structure
+    (QPSK, 10dB), while LMS and NLMS on the identical held-out channel
+    degrade only 1.17x and 1.41x. This revises, rather than overturns, the
+    project's practical recommendation — the CNN's advantage is real when
+    training and deployment channels match, but shouldn't be assumed to
+    survive a channel that drifts from that training distribution. See
+    [report/findings_cnn_channel_generalization.md](report/findings_cnn_channel_generalization.md).
 
 See [report/report.md](report/report.md) for the full mechanism and verification behind each
 finding, and the `report/findings_*.md` files for the deep-dive write-up

@@ -58,7 +58,7 @@ NLMS_MU = 0.5
 TRAINING_LENGTH = 1000 * SPS  # 1000 symbols preamble
 
 RESULTS_DIR = PROJECT_ROOT / "results"
-FIGURES_DIR = RESULTS_DIR / "figures"
+FIGURES_DIR = RESULTS_DIR / "figures" / "case1_no_isi"
 TABLES_DIR = RESULTS_DIR / "tables"
 REPORT_DIR = PROJECT_ROOT / "report"
 

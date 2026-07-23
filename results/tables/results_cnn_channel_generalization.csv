@@ -1,0 +1,181 @@
+modulation,channel,isi_energy,snr_db_in,method,ber,errors,bits
+BPSK,matched (train==test),0.27,0,No Processing,0.08676,13014,150000
+BPSK,matched (train==test),0.27,10,No Processing,6.666666666666667e-06,1,150000
+BPSK,matched (train==test),0.27,20,No Processing,0.0,0,150000
+BPSK,matched (train==test),0.27,0,LMS,0.12097333333333334,18146,150000
+BPSK,matched (train==test),0.27,10,LMS,0.00027333333333333333,41,150000
+BPSK,matched (train==test),0.27,20,LMS,2.6666666666666667e-05,4,150000
+BPSK,matched (train==test),0.27,0,NLMS,0.12163333333333333,18245,150000
+BPSK,matched (train==test),0.27,10,NLMS,0.00036666666666666667,55,150000
+BPSK,matched (train==test),0.27,20,NLMS,2e-05,3,150000
+BPSK,matched (train==test),0.27,0,CNN,0.08164,12246,150000
+BPSK,matched (train==test),0.27,10,CNN,0.0,0,150000
+BPSK,matched (train==test),0.27,20,CNN,0.0,0,150000
+BPSK,matched (train==test),0.27,0,MMSE (Genie),0.07868,11802,150000
+BPSK,matched (train==test),0.27,10,MMSE (Genie),0.0,0,150000
+BPSK,matched (train==test),0.27,20,MMSE (Genie),0.0,0,150000
+BPSK,rotated phase (2-tap),0.2125,0,No Processing,0.10328,15492,150000
+BPSK,rotated phase (2-tap),0.2125,10,No Processing,0.00012666666666666666,19,150000
+BPSK,rotated phase (2-tap),0.2125,20,No Processing,0.0,0,150000
+BPSK,rotated phase (2-tap),0.2125,0,LMS,0.10684666666666667,16027,150000
+BPSK,rotated phase (2-tap),0.2125,10,LMS,9.333333333333333e-05,14,150000
+BPSK,rotated phase (2-tap),0.2125,20,LMS,4.6666666666666665e-05,7,150000
+BPSK,rotated phase (2-tap),0.2125,0,NLMS,0.10798666666666666,16198,150000
+BPSK,rotated phase (2-tap),0.2125,10,NLMS,0.00014666666666666666,22,150000
+BPSK,rotated phase (2-tap),0.2125,20,NLMS,6.666666666666667e-06,1,150000
+BPSK,rotated phase (2-tap),0.2125,0,CNN,0.09106,13659,150000
+BPSK,rotated phase (2-tap),0.2125,10,CNN,0.00014,21,150000
+BPSK,rotated phase (2-tap),0.2125,20,CNN,0.0,0,150000
+BPSK,rotated phase (2-tap),0.2125,0,MMSE (Genie),0.08157333333333333,12236,150000
+BPSK,rotated phase (2-tap),0.2125,10,MMSE (Genie),0.00017333333333333334,26,150000
+BPSK,rotated phase (2-tap),0.2125,20,MMSE (Genie),0.0,0,150000
+BPSK,longer delay spread (4-tap),0.1797,0,No Processing,0.0797,11955,150000
+BPSK,longer delay spread (4-tap),0.1797,10,No Processing,6.666666666666667e-06,1,150000
+BPSK,longer delay spread (4-tap),0.1797,20,No Processing,0.0,0,150000
+BPSK,longer delay spread (4-tap),0.1797,0,LMS,0.12010666666666667,18016,150000
+BPSK,longer delay spread (4-tap),0.1797,10,LMS,0.00025333333333333333,38,150000
+BPSK,longer delay spread (4-tap),0.1797,20,LMS,2.6666666666666667e-05,4,150000
+BPSK,longer delay spread (4-tap),0.1797,0,NLMS,0.12048,18072,150000
+BPSK,longer delay spread (4-tap),0.1797,10,NLMS,0.0003066666666666667,46,150000
+BPSK,longer delay spread (4-tap),0.1797,20,NLMS,2e-05,3,150000
+BPSK,longer delay spread (4-tap),0.1797,0,CNN,0.09416,14124,150000
+BPSK,longer delay spread (4-tap),0.1797,10,CNN,6.666666666666667e-06,1,150000
+BPSK,longer delay spread (4-tap),0.1797,20,CNN,0.0,0,150000
+BPSK,longer delay spread (4-tap),0.1797,0,MMSE (Genie),0.07804,11706,150000
+BPSK,longer delay spread (4-tap),0.1797,10,MMSE (Genie),0.0,0,150000
+BPSK,longer delay spread (4-tap),0.1797,20,MMSE (Genie),0.0,0,150000
+BPSK,sign-flipped taps (3-tap),0.27,0,No Processing,0.10662,15993,150000
+BPSK,sign-flipped taps (3-tap),0.27,10,No Processing,8.666666666666667e-05,13,150000
+BPSK,sign-flipped taps (3-tap),0.27,20,No Processing,0.0,0,150000
+BPSK,sign-flipped taps (3-tap),0.27,0,LMS,0.11863333333333333,17795,150000
+BPSK,sign-flipped taps (3-tap),0.27,10,LMS,0.00016,24,150000
+BPSK,sign-flipped taps (3-tap),0.27,20,LMS,4.6666666666666665e-05,7,150000
+BPSK,sign-flipped taps (3-tap),0.27,0,NLMS,0.11974,17961,150000
+BPSK,sign-flipped taps (3-tap),0.27,10,NLMS,0.00040666666666666667,61,150000
+BPSK,sign-flipped taps (3-tap),0.27,20,NLMS,6.666666666666667e-06,1,150000
+BPSK,sign-flipped taps (3-tap),0.27,0,CNN,0.16950666666666667,25426,150000
+BPSK,sign-flipped taps (3-tap),0.27,10,CNN,0.00358,537,150000
+BPSK,sign-flipped taps (3-tap),0.27,20,CNN,0.0,0,150000
+BPSK,sign-flipped taps (3-tap),0.27,0,MMSE (Genie),0.08283333333333333,12425,150000
+BPSK,sign-flipped taps (3-tap),0.27,10,MMSE (Genie),0.00104,156,150000
+BPSK,sign-flipped taps (3-tap),0.27,20,MMSE (Genie),0.0,0,150000
+BPSK,"different phase, same taps count",0.2698,0,No Processing,0.08821333333333334,13232,150000
+BPSK,"different phase, same taps count",0.2698,10,No Processing,3.3333333333333335e-05,5,150000
+BPSK,"different phase, same taps count",0.2698,20,No Processing,0.0,0,150000
+BPSK,"different phase, same taps count",0.2698,0,LMS,0.12032666666666667,18049,150000
+BPSK,"different phase, same taps count",0.2698,10,LMS,0.00013333333333333334,20,150000
+BPSK,"different phase, same taps count",0.2698,20,LMS,4e-05,6,150000
+BPSK,"different phase, same taps count",0.2698,0,NLMS,0.12148666666666667,18223,150000
+BPSK,"different phase, same taps count",0.2698,10,NLMS,0.0003,45,150000
+BPSK,"different phase, same taps count",0.2698,20,NLMS,2e-05,3,150000
+BPSK,"different phase, same taps count",0.2698,0,CNN,0.08412666666666667,12619,150000
+BPSK,"different phase, same taps count",0.2698,10,CNN,0.0,0,150000
+BPSK,"different phase, same taps count",0.2698,20,CNN,0.0,0,150000
+BPSK,"different phase, same taps count",0.2698,0,MMSE (Genie),0.07782,11673,150000
+BPSK,"different phase, same taps count",0.2698,10,MMSE (Genie),0.0,0,150000
+BPSK,"different phase, same taps count",0.2698,20,MMSE (Genie),0.0,0,150000
+BPSK,single dominant reflection (2-tap),0.2725,0,No Processing,0.08232,12348,150000
+BPSK,single dominant reflection (2-tap),0.2725,10,No Processing,3.3333333333333335e-05,5,150000
+BPSK,single dominant reflection (2-tap),0.2725,20,No Processing,0.0,0,150000
+BPSK,single dominant reflection (2-tap),0.2725,0,LMS,0.12516666666666668,18775,150000
+BPSK,single dominant reflection (2-tap),0.2725,10,LMS,0.0003,45,150000
+BPSK,single dominant reflection (2-tap),0.2725,20,LMS,2.6666666666666667e-05,4,150000
+BPSK,single dominant reflection (2-tap),0.2725,0,NLMS,0.12581333333333333,18872,150000
+BPSK,single dominant reflection (2-tap),0.2725,10,NLMS,0.0004,60,150000
+BPSK,single dominant reflection (2-tap),0.2725,20,NLMS,2e-05,3,150000
+BPSK,single dominant reflection (2-tap),0.2725,0,CNN,0.10221333333333334,15332,150000
+BPSK,single dominant reflection (2-tap),0.2725,10,CNN,4e-05,6,150000
+BPSK,single dominant reflection (2-tap),0.2725,20,CNN,0.0,0,150000
+BPSK,single dominant reflection (2-tap),0.2725,0,MMSE (Genie),0.07785333333333333,11678,150000
+BPSK,single dominant reflection (2-tap),0.2725,10,MMSE (Genie),0.0,0,150000
+BPSK,single dominant reflection (2-tap),0.2725,20,MMSE (Genie),0.0,0,150000
+QPSK,matched (train==test),0.27,0,No Processing,0.17854333333333333,53563,300000
+QPSK,matched (train==test),0.27,10,No Processing,0.009256666666666667,2777,300000
+QPSK,matched (train==test),0.27,20,No Processing,0.0,0,300000
+QPSK,matched (train==test),0.27,0,LMS,0.19658666666666666,58976,300000
+QPSK,matched (train==test),0.27,10,LMS,0.00344,1032,300000
+QPSK,matched (train==test),0.27,20,LMS,6.666666666666667e-06,2,300000
+QPSK,matched (train==test),0.27,0,NLMS,0.19788666666666666,59366,300000
+QPSK,matched (train==test),0.27,10,NLMS,0.0038233333333333335,1147,300000
+QPSK,matched (train==test),0.27,20,NLMS,6.666666666666667e-06,2,300000
+QPSK,matched (train==test),0.27,0,CNN,0.16777,50331,300000
+QPSK,matched (train==test),0.27,10,CNN,0.00165,495,300000
+QPSK,matched (train==test),0.27,20,CNN,0.0,0,300000
+QPSK,matched (train==test),0.27,0,MMSE (Genie),0.17042333333333334,51127,300000
+QPSK,matched (train==test),0.27,10,MMSE (Genie),0.018613333333333332,5584,300000
+QPSK,matched (train==test),0.27,20,MMSE (Genie),0.00045,135,300000
+QPSK,rotated phase (2-tap),0.2125,0,No Processing,0.20508333333333334,61525,300000
+QPSK,rotated phase (2-tap),0.2125,10,No Processing,0.04082,12246,300000
+QPSK,rotated phase (2-tap),0.2125,20,No Processing,0.0027966666666666665,839,300000
+QPSK,rotated phase (2-tap),0.2125,0,LMS,0.18907666666666667,56723,300000
+QPSK,rotated phase (2-tap),0.2125,10,LMS,0.0024666666666666665,740,300000
+QPSK,rotated phase (2-tap),0.2125,20,LMS,2.6666666666666667e-05,8,300000
+QPSK,rotated phase (2-tap),0.2125,0,NLMS,0.18953333333333333,56860,300000
+QPSK,rotated phase (2-tap),0.2125,10,NLMS,0.003353333333333333,1006,300000
+QPSK,rotated phase (2-tap),0.2125,20,NLMS,6.666666666666667e-06,2,300000
+QPSK,rotated phase (2-tap),0.2125,0,CNN,0.18547333333333332,55642,300000
+QPSK,rotated phase (2-tap),0.2125,10,CNN,0.008513333333333333,2554,300000
+QPSK,rotated phase (2-tap),0.2125,20,CNN,3.3333333333333333e-06,1,300000
+QPSK,rotated phase (2-tap),0.2125,0,MMSE (Genie),0.18904666666666667,56714,300000
+QPSK,rotated phase (2-tap),0.2125,10,MMSE (Genie),0.08777,26331,300000
+QPSK,rotated phase (2-tap),0.2125,20,MMSE (Genie),0.08035333333333333,24106,300000
+QPSK,longer delay spread (4-tap),0.1797,0,No Processing,0.1617,48510,300000
+QPSK,longer delay spread (4-tap),0.1797,10,No Processing,0.0013966666666666667,419,300000
+QPSK,longer delay spread (4-tap),0.1797,20,No Processing,0.0,0,300000
+QPSK,longer delay spread (4-tap),0.1797,0,LMS,0.19388333333333332,58165,300000
+QPSK,longer delay spread (4-tap),0.1797,10,LMS,0.00276,828,300000
+QPSK,longer delay spread (4-tap),0.1797,20,LMS,6.666666666666667e-06,2,300000
+QPSK,longer delay spread (4-tap),0.1797,0,NLMS,0.19501,58503,300000
+QPSK,longer delay spread (4-tap),0.1797,10,NLMS,0.0031,930,300000
+QPSK,longer delay spread (4-tap),0.1797,20,NLMS,6.666666666666667e-06,2,300000
+QPSK,longer delay spread (4-tap),0.1797,0,CNN,0.18947,56841,300000
+QPSK,longer delay spread (4-tap),0.1797,10,CNN,0.01165,3495,300000
+QPSK,longer delay spread (4-tap),0.1797,20,CNN,0.0,0,300000
+QPSK,longer delay spread (4-tap),0.1797,0,MMSE (Genie),0.16043666666666667,48131,300000
+QPSK,longer delay spread (4-tap),0.1797,10,MMSE (Genie),0.0021033333333333334,631,300000
+QPSK,longer delay spread (4-tap),0.1797,20,MMSE (Genie),0.0,0,300000
+QPSK,sign-flipped taps (3-tap),0.27,0,No Processing,0.21391,64173,300000
+QPSK,sign-flipped taps (3-tap),0.27,10,No Processing,0.057293333333333335,17188,300000
+QPSK,sign-flipped taps (3-tap),0.27,20,No Processing,0.011346666666666666,3404,300000
+QPSK,sign-flipped taps (3-tap),0.27,0,LMS,0.19830666666666666,59492,300000
+QPSK,sign-flipped taps (3-tap),0.27,10,LMS,0.00404,1212,300000
+QPSK,sign-flipped taps (3-tap),0.27,20,LMS,3.3333333333333335e-05,10,300000
+QPSK,sign-flipped taps (3-tap),0.27,0,NLMS,0.19950333333333334,59851,300000
+QPSK,sign-flipped taps (3-tap),0.27,10,NLMS,0.0054,1620,300000
+QPSK,sign-flipped taps (3-tap),0.27,20,NLMS,1e-05,3,300000
+QPSK,sign-flipped taps (3-tap),0.27,0,CNN,0.28961333333333333,86884,300000
+QPSK,sign-flipped taps (3-tap),0.27,10,CNN,0.21402666666666667,64208,300000
+QPSK,sign-flipped taps (3-tap),0.27,20,CNN,0.20526666666666665,61580,300000
+QPSK,sign-flipped taps (3-tap),0.27,0,MMSE (Genie),0.19852,59556,300000
+QPSK,sign-flipped taps (3-tap),0.27,10,MMSE (Genie),0.12897,38691,300000
+QPSK,sign-flipped taps (3-tap),0.27,20,MMSE (Genie),0.13020333333333334,39061,300000
+QPSK,"different phase, same taps count",0.2698,0,No Processing,0.18004,54012,300000
+QPSK,"different phase, same taps count",0.2698,10,No Processing,0.009896666666666666,2969,300000
+QPSK,"different phase, same taps count",0.2698,20,No Processing,0.0,0,300000
+QPSK,"different phase, same taps count",0.2698,0,LMS,0.19451,58353,300000
+QPSK,"different phase, same taps count",0.2698,10,LMS,0.0022966666666666665,689,300000
+QPSK,"different phase, same taps count",0.2698,20,LMS,1.6666666666666667e-05,5,300000
+QPSK,"different phase, same taps count",0.2698,0,NLMS,0.19571,58713,300000
+QPSK,"different phase, same taps count",0.2698,10,NLMS,0.00296,888,300000
+QPSK,"different phase, same taps count",0.2698,20,NLMS,6.666666666666667e-06,2,300000
+QPSK,"different phase, same taps count",0.2698,0,CNN,0.16727333333333333,50182,300000
+QPSK,"different phase, same taps count",0.2698,10,CNN,0.002013333333333333,604,300000
+QPSK,"different phase, same taps count",0.2698,20,CNN,0.0,0,300000
+QPSK,"different phase, same taps count",0.2698,0,MMSE (Genie),0.16029666666666667,48089,300000
+QPSK,"different phase, same taps count",0.2698,10,MMSE (Genie),0.0014633333333333334,439,300000
+QPSK,"different phase, same taps count",0.2698,20,MMSE (Genie),0.0,0,300000
+QPSK,single dominant reflection (2-tap),0.2725,0,No Processing,0.16477333333333333,49432,300000
+QPSK,single dominant reflection (2-tap),0.2725,10,No Processing,0.0022,660,300000
+QPSK,single dominant reflection (2-tap),0.2725,20,No Processing,0.0,0,300000
+QPSK,single dominant reflection (2-tap),0.2725,0,LMS,0.19719333333333333,59158,300000
+QPSK,single dominant reflection (2-tap),0.2725,10,LMS,0.00303,909,300000
+QPSK,single dominant reflection (2-tap),0.2725,20,LMS,1e-05,3,300000
+QPSK,single dominant reflection (2-tap),0.2725,0,NLMS,0.19879666666666668,59639,300000
+QPSK,single dominant reflection (2-tap),0.2725,10,NLMS,0.003503333333333333,1051,300000
+QPSK,single dominant reflection (2-tap),0.2725,20,NLMS,6.666666666666667e-06,2,300000
+QPSK,single dominant reflection (2-tap),0.2725,0,CNN,0.19755,59265,300000
+QPSK,single dominant reflection (2-tap),0.2725,10,CNN,0.021796666666666666,6539,300000
+QPSK,single dominant reflection (2-tap),0.2725,20,CNN,1.3333333333333333e-05,4,300000
+QPSK,single dominant reflection (2-tap),0.2725,0,MMSE (Genie),0.15982,47946,300000
+QPSK,single dominant reflection (2-tap),0.2725,10,MMSE (Genie),0.0011,330,300000
+QPSK,single dominant reflection (2-tap),0.2725,20,MMSE (Genie),0.0,0,300000
