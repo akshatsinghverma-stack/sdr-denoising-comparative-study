@@ -5,6 +5,17 @@
 **Comparative Study of Classical Adaptive Filtering and Deep Learning Based
 Denoising Techniques for SDR Communication Signals**
 
+Compares five denoising/equalization approaches — LMS, NLMS, RLS, a 1-D CNN
+autoencoder, and a Hybrid LMS→CNN cascade — against a No-Processing baseline
+and a genie-aided MMSE reference, for BPSK/QPSK/16-QAM signals under AWGN,
+multipath ISI, and time-varying fading. What began as two controlled case
+studies grew, through follow-up questions each result raised, into four case
+studies plus several connecting/diagnostic analyses — every addition was
+triggered by a specific gap or untested claim the previous result left open.
+See `report/report.md` for the full technical writeup, or
+`report/SDR_Denoising_Project_Report.docx` for a formatted version with
+figures, tables, and a table of contents.
+
 ## Quick Start
 
 ```bash
@@ -27,48 +38,67 @@ python experiments/run_case2_isi.py
 
 # ISI severity sweep: locates the crossover between Case 1 and Case 2 (~10 min on CPU)
 python experiments/run_severity_sweep.py
+
+# Case Study 3: time-varying channel -- does decision-directed tracking earn its keep?
+python experiments/run_timevarying_channel.py
+
+# Case Study 4: 16-QAM -- does decision-boundary crowding keep sharpening the effect?
+python experiments/run_16qam_comparison.py
+
+# Diagnostics / connecting analyses (each answers one specific open question):
+python experiments/run_case1_boundary_loss.py          # boundary-aware CNN loss vs. plain MSE
+python experiments/compute_cost_analysis.py             # MACs/sample + wall-clock benchmark
+python experiments/run_rls_comparison.py                # RLS vs. LMS/NLMS on ISI
+python experiments/diagnose_lms_nlms_asymmetry.py       # why NLMS doesn't benefit from DD tracking
+python experiments/diagnose_cnn_high_snr_floor.py       # root-causing the high-SNR CNN error floor
+python experiments/diagnose_training_variance.py        # test-time vs. training-draw BER variance
 ```
 
 `experiments/run_all.py` is currently identical to `run_case1_no_isi.py` (kept
-for backward compatibility). See `report/report.md` for why this project is
-organized as two case studies plus a connecting sweep rather than one
-pipeline, and Section 6 of that report for the reasoning that ties them
-together.
+for backward compatibility).
 
 ## Project Structure
 
 ```
 sdr_denoising_project/
-├── requirements.txt          # Python dependencies
-├── README.md                 # This file
+├── requirements.txt              # Full project dependencies (incl. TensorFlow)
+├── requirements-test.txt         # Lightweight deps for tests/ only (no TensorFlow -- CI uses this)
+├── README.md                     # This file
+├── .github/workflows/tests.yml   # CI: runs the regression suite on every push
 ├── src/
-│   ├── signal_gen.py         # BPSK/QPSK signal generators (with optional RRC pulse shaping)
-│   ├── channel.py            # AWGN + multipath (ISI) channel models (causal convolution)
-│   ├── lms_filter.py         # LMS adaptive filter (preamble + optional decision-directed mode)
-│   ├── nlms_filter.py        # NLMS adaptive filter (same interface as LMS)
-│   ├── rls_filter.py         # RLS adaptive filter (implemented, not yet wired into either case study)
-│   ├── cnn_autoencoder.py    # 1-D CNN denoising autoencoder
-│   ├── hybrid_model.py       # Hybrid LMS → CNN cascade
-│   ├── mmse_equalizer.py     # Genie-aided linear MMSE equalizer (upper-bound reference, Case Study 2)
-│   ├── metrics.py            # SNR, BER (+ raw error/bit counts), MSE calculations
-│   └── utils.py              # Demapping & plotting helpers (with error-bar support)
+│   ├── signal_gen.py             # BPSK/QPSK/16-QAM/8-PSK generators (Gray-coded, optional RRC pulse shaping)
+│   ├── channel.py                # AWGN, static multipath, and time-varying multipath channel models
+│   ├── lms_filter.py             # LMS adaptive filter (preamble + optional decision-directed mode)
+│   ├── nlms_filter.py            # NLMS adaptive filter (same interface as LMS)
+│   ├── rls_filter.py             # RLS adaptive filter (frozen-by-default, matching LMS/NLMS's safe default)
+│   ├── cnn_autoencoder.py        # 1-D CNN denoising autoencoder (plain MSE loss)
+│   ├── cnn_boundary_aware.py     # Same architecture, boundary-hinge loss variant
+│   ├── hybrid_model.py           # Hybrid LMS → CNN cascade
+│   ├── mmse_equalizer.py         # Genie-aided linear MMSE equalizer (upper-bound reference)
+│   ├── metrics.py                # SNR, BER (+ raw error/bit counts), MSE calculations
+│   └── utils.py                  # Demapping, receiver frontend, and plotting helpers
 ├── experiments/
-│   ├── run_case1_no_isi.py   # Case Study 1 pipeline
-│   ├── run_case2_isi.py      # Case Study 2 pipeline (incl. genie MMSE)
-│   ├── run_severity_sweep.py # ISI severity sweep (diagnostic, connects the two case studies)
-│   └── run_all.py            # Alias of run_case1_no_isi.py
-├── tests/                    # Regression test suite (35 tests, ~25s) -- see below
+│   ├── run_case1_no_isi.py             # Case Study 1: memoryless AWGN
+│   ├── run_case2_isi.py                # Case Study 2: RRC + multipath ISI, incl. genie MMSE
+│   ├── run_severity_sweep.py           # ISI severity sweep (connects Case Studies 1 & 2)
+│   ├── run_timevarying_channel.py      # Case Study 3: time-varying channel, DD tracking
+│   ├── run_16qam_comparison.py         # Case Study 4: 16-QAM
+│   ├── run_case1_boundary_loss.py      # Boundary-aware CNN loss follow-up
+│   ├── compute_cost_analysis.py        # MACs/sample + wall-clock compute-cost analysis
+│   ├── run_rls_comparison.py           # RLS vs. LMS/NLMS/MMSE on Case Study 2's channel
+│   ├── diagnose_lms_nlms_asymmetry.py  # Root-causes LMS-vs-NLMS DD-tracking asymmetry
+│   ├── diagnose_cnn_high_snr_floor.py  # Root-causes the loss-independent high-SNR CNN floor
+│   ├── diagnose_training_variance.py   # Test-time vs. training-draw BER variance
+│   └── run_all.py                      # Alias of run_case1_no_isi.py
+├── tests/                        # Regression test suite (~50 tests, ~25s) -- see below
 ├── results/
-│   ├── figures/
-│   │   ├── case1_no_isi/     # Case Study 1 plots
-│   │   ├── case2_isi/        # Case Study 2 plots
-│   │   └── severity_sweep/   # Crossover plots
-│   └── tables/
-│       ├── results_case1_no_isi.csv
-│       ├── results_case2_isi.csv
-│       └── results_severity_sweep.csv
+│   ├── figures/                  # One subdirectory per case study/analysis
+│   └── tables/                   # One or more CSVs per case study/analysis
 └── report/
-    └── report.md             # Full report — both case studies, the severity sweep, and the MMSE bound
+    ├── report.md                          # Full technical report (all case studies + analyses)
+    ├── findings_*.md                       # Standalone deep-dive write-ups for each diagnostic
+    ├── build_word_report.py                # Generates the formatted Word report
+    └── SDR_Denoising_Project_Report.docx   # Formatted report: TOC, figures, tables, captions
 ```
 
 ## Methods Compared
@@ -77,93 +107,117 @@ sdr_denoising_project/
 |---|--------|-------------|
 | 1 | **LMS**    | Least-Mean-Squares adaptive filter (16 taps, μ=0.01, preamble-trained then frozen) |
 | 2 | **NLMS**   | Normalised LMS (16 taps, μ=0.5, ε=1e-6) |
-| 3 | **CNN**    | 1-D Convolutional Denoising Autoencoder (~15k params) |
-| 4 | **Hybrid** | LMS (coarse) → retrained CNN (residual fine-tuning) |
-| 5 | **MMSE (Genie)** | Closed-form linear MMSE equalizer given the *known* channel and noise level (Case Study 2 only — an upper-bound reference, not a competing adaptive method) |
-| — | **No Processing** | Raw noisy signal → hard-decision demod (falsifiability baseline) |
+| 3 | **RLS**    | Recursive Least Squares (16 taps, λ=0.99) — added as a third classical baseline on Case Study 2's channel |
+| 4 | **CNN**    | 1-D Convolutional Denoising Autoencoder (6,890 parameters, verified via `model.count_params()`) |
+| 5 | **Hybrid** | LMS (coarse) → retrained CNN (residual fine-tuning) |
+| 6 | **MMSE (Genie)** | Closed-form linear MMSE equalizer given the *known* channel and noise level — an upper-bound reference, not a competing adaptive method |
+| — | **No Processing** | Raw noisy signal → hard-decision demod (falsifiability baseline every other row is judged against) |
 
-## Modulations & SNR Range
+## Modulations & Channels
 
-- **BPSK** and **QPSK** (Gray-coded), 100,000 symbols per trial, 10 Monte Carlo
-  trials per (modulation, SNR, method) — results reported as mean ± std, with
-  a rule-of-three 95% upper bound reported for any cell with zero observed
-  errors (a bare `0.0` would misleadingly read as "proven perfect").
-- AWGN channel, SNR sweep: −10, −5, 0, +5, +10, +15, +20 dB.
-
-## Outputs
-
-- `results/tables/results_case1_no_isi.csv`, `results_case2_isi.csv`, `results_severity_sweep.csv`
-- `results/figures/case1_no_isi/`, `case2_isi/`, `severity_sweep/` — BER curves
-  (with error bars; theoretical AWGN reference only on Case 1, deliberately
-  removed from Case 2 since it isn't a valid bound there), SNR curves,
-  constellations, convergence, loss, and the severity-crossover plots
-- `report/report.md` — full report: methodology, both case studies' results,
-  the severity sweep, the genie MMSE bound, the key findings connecting them,
-  and honest limitations/future work
+- **BPSK**, **QPSK** (Gray-coded), and **16-QAM** (Case Study 4), 100,000
+  symbols/trial for the two main case studies (reduced to 15,000-30,000 for
+  diagnostic-scoped follow-ups), 10 Monte Carlo trials (5 for diagnostics) per
+  (modulation, SNR, method) — results reported as mean ± std, with a
+  rule-of-three 95% upper bound for any cell with zero observed errors.
+- **AWGN** (all case studies), **static multipath ISI** (Case Studies 2/4,
+  the severity sweep), and **time-varying multipath / flat fading** (Case
+  Study 3, sinusoidal and random-walk drift models).
 
 ## Key Findings
 
-1. **SNR improvement does not imply BER improvement**, and whether adaptive
-   filtering/denoising helps BER at all depends on whether the channel has
-   structure to exploit. On a memoryless AWGN channel (Case Study 1), the raw
-   received sample is already a sufficient statistic for symbol detection, so
-   every method — LMS, NLMS, CNN, Hybrid — produces *strictly worse* BER than
-   doing nothing, despite large apparent SNR gains. Add real inter-symbol
-   interference (Case Study 2) and QPSK's result reverses sharply (up to
-   ~470x fewer errors with CNN); BPSK, whose decision boundary is far more
-   forgiving of this channel's distortion, barely benefits and classical
-   filters are frequently *worse* than doing nothing even with real ISI
-   present — the same channel, radically different outcomes, purely a
-   function of decision-boundary geometry.
-2. **The ISI severity sweep turns that into an actual crossover curve**
-   (rather than two disconnected snapshots): QPSK at 10dB goes from
-   "equalization hurts" (LMS 0.52x at zero ISI) through breakeven (~severity
-   0.5) to "equalization helps substantially" (2.68x at full severity).
-3. **The SNR-vs-BER disconnect recurs three times, via three different
-   mechanisms** — verified each time via held-out generalization testing and
-   direct decision-margin/phase inspection, never assumed: boundary-blind MSE
-   training (Case Study 1), structured non-Gaussian residual dragging down an
-   average SNR metric (Case Study 2 CNN), and phase-structured residual error
-   from a linear equalizer's noise-enhancement/residual-ISI tradeoff (the
-   genie MMSE bound, which a nonlinear CNN demonstrably exceeds at high SNR).
-4. **Three real bugs were found and fixed** during this project (an LMS
-   step-size/divergence bug, a receiver matched-filter gain bug, an SNR
-   calibration bug, and a multipath-convolution causality bug — four, not
-   three, if counted individually; see report Section 4.2 for the full
-   account), every one caught by checking a value against what it must
-   equal by definition rather than accepting an odd number as a quirk. A
-   35-test regression suite (`tests/`) now codifies all of them.
+1. **SNR improvement does not imply BER improvement**, and whether any
+   method helps at all depends jointly on whether the channel has structure
+   to exploit and how sensitive the specific modulation's decision geometry
+   is to the specific distortion that structure introduces. On a memoryless
+   AWGN channel (Case Study 1), the raw received sample is already a
+   sufficient statistic for symbol detection, so every method — LMS, NLMS,
+   CNN, Hybrid — produces *strictly worse* BER than doing nothing, despite
+   large apparent SNR gains (verified directly: the converged LMS filter's
+   tap weights match the theoretical Wiener shrinkage factor).
+2. **Add real inter-symbol interference (Case Study 2) and the result can
+   reverse sharply** — QPSK wins by up to ~470x with CNN — but BPSK barely
+   benefits and classical filters are frequently *worse* than doing nothing
+   even with ISI present. The ISI severity sweep turns this into an actual
+   crossover curve rather than two disconnected snapshots.
+3. **A genuinely time-varying channel (Case Study 3) partially refutes this
+   project's own most load-bearing design decision**: LMS decision-directed
+   tracking earns back a real, substantial BER improvement once the channel
+   actually moves — refuting the "nothing to track on a static channel"
+   justification as a general principle, even though "freeze by default"
+   remains the right default today for an unrelated reason (a decision-
+   directed implementation bug at SPS>1). NLMS does *not* show the same
+   benefit — root-caused (not just observed) via an instrumented diagnostic:
+   NLMS's instantaneous-power step-size normalization measurably inflates
+   its effective step size during channel fades, in 15/15 trials tested,
+   exactly when wrong decisions are most likely; LMS's fixed step size does
+   the opposite in 16/16 trials.
+4. **16-QAM (Case Study 4) confirms decision-boundary crowding keeps
+   sharpening the effect** — equalization wins by up to 610x, No-Processing
+   develops a hard, un-closeable BER floor that doesn't exist for BPSK/QPSK,
+   and the genie MMSE's linear-equalizer ceiling turns from a curiosity into
+   an outright regression below doing nothing.
+5. **Two previously-open questions were resolved with the same instrumented-
+   diagnostic-plus-significance-test methodology**: a boundary-aware CNN
+   loss confirmed "MSE is boundary-blind" as a real, partial, modulation-
+   dependent cause of Case Study 1's headline result; and a separate,
+   loss-independent high-SNR CNN error floor was root-caused to the CNN's
+   window/overlap-add reconstruction (81.1% same-position overlap between
+   loss functions, χ²=168.0 p=3.5×10⁻³⁶ non-uniform clustering by window
+   phase), ruling out "unfixable noise" as the primary cause.
+6. **Compute cost and BER cost do not move together.** CNN needs ~106-212x
+   more raw arithmetic than LMS/NLMS/MMSE per sample, yet is *faster* in
+   wall-clock terms on this project's CPU-only stack — an implementation-
+   efficiency artifact, not an algorithmic one; the analytical MAC gap
+   reasserts itself as a genuine microcontroller-vs-applications-processor
+   deployment question.
+7. **Five real bugs were found and fixed** during this project (LMS
+   step-size/divergence, a receiver matched-filter gain bug, an SNR
+   calibration bug, a multipath-convolution causality bug, and a
+   decision-directed reliability gate that was silently dead code at
+   SPS>1), every one caught by checking a value against what it must equal
+   by definition. A ~50-test regression suite (`tests/`), run automatically
+   on every push via GitHub Actions, now codifies all of them.
 
-See `report/report.md` for the full mechanism and verification behind each.
+See `report/report.md` for the full mechanism and verification behind each
+finding, and the `report/findings_*.md` files for the deep-dive write-up
+behind each diagnostic.
 
 ## Assumptions & Limitations
 
-1. **LMS/NLMS use one fixed μ across the whole SNR sweep.** This is the direct
-   cause of a small (~0.2-0.3dB), quantifiable SNR shortfall at high SNR in
-   Case Study 1 (matches the textbook LMS misadjustment formula almost
-   exactly) — per-SNR μ tuning is the natural next step.
-2. **RLS is implemented (`src/rls_filter.py`) but not yet wired into either
-   case study**, to keep exactly one variable (the channel) different between
-   Case Study 1 and 2. Named explicitly as future work, along with MLSE/Viterbi
-   equalization, a genuinely time-varying channel, and multiple independent
-   training draws — see report Section 8.
-3. **Single static multipath channel** in Case Study 2's main run — partially
-   addressed by the severity sweep (varies magnitude, not delay spread or tap count).
-4. **Small CNN** (~15k parameters, 3 encoder + 3 decoder Conv1D layers) —
+1. **LMS/NLMS/RLS use one fixed step size/forgetting-factor across the whole
+   SNR sweep.** This is the direct cause of a small, quantifiable SNR
+   shortfall at high SNR in Case Study 1 (matches the textbook LMS
+   misadjustment formula almost exactly) — per-SNR tuning is a natural next
+   step.
+2. **Single static multipath channel** in Case Study 2's main run — partially
+   addressed by the severity sweep (varies magnitude, not delay spread or tap
+   count).
+3. **Small CNN** (6,890 parameters, 3 encoder + 3 decoder Conv1D layers) —
    deeper/wider architectures were not explored.
-5. **CPU-only training**, TensorFlow with EarlyStopping.
-6. **The theoretical Q-function BER curve** plotted on BER-vs-SNR figures is
+4. **CPU-only training**, TensorFlow with EarlyStopping.
+5. **The theoretical Q-function BER curve** plotted on BER-vs-SNR figures is
    only valid for Case Study 1 (memoryless AWGN); it has been removed
-   (not just captioned) from Case Study 2's figures, since it is not a bound
-   there and a figure viewed without its caption could otherwise mislead.
-7. **The genie MMSE equalizer is a linear, symbol-spaced reference bound**,
-   not a universal ceiling — see report Section 4.7 before citing it as
-   "the best possible."
+   (not just captioned) from every ISI-channel figure, since it is not a
+   bound there and a figure viewed without its caption could otherwise
+   mislead.
+6. **The genie MMSE equalizer is a linear, symbol-spaced reference bound**,
+   not a universal ceiling.
+7. **The decision-directed update rule is not yet fixed for SPS>1** — it
+   remains off by default everywhere in this project, which is why this
+   limitation hasn't affected any reported result, but it blocks safely
+   testing DD tracking on this project's actual (pulse-shaped) ISI channels.
+8. Named, scoped-out future work (not attempted this round, each for a
+   specific stated reason): MLSE/Viterbi equalization, a full 8-PSK pipeline
+   run, cycle-accurate hardware validation of the compute-cost analysis, and
+   fixing the SPS>1 decision-directed update rule itself — see
+   `report/report.md` Section 11 for the complete list and reasoning.
 
 ## Requirements
 
 - Python 3.10+
-- numpy, scipy, matplotlib, scikit-learn, tensorflow, pandas, pytest, python-docx
+- Full project: numpy, scipy, matplotlib, scikit-learn, tensorflow, pandas, pytest, python-docx
+- Tests only (`requirements-test.txt`, used by CI): numpy, scipy, matplotlib, scikit-learn, pandas, pytest — no TensorFlow, since no test imports the CNN/Hybrid modules
 
 ## License
 
