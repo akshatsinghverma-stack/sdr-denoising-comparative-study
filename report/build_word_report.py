@@ -414,6 +414,47 @@ for i, (k, v) in enumerate(meta_rows):
 doc.add_page_break()
 
 # ===========================================================================
+# Abstract + Index Terms
+# (Front-matter convention: an Abstract is distinct from an Executive
+# Summary -- an abstract is short, technical, and IMRaD-structured for a
+# reader deciding whether to read on; an executive summary is longer and
+# decision-focused for a reader who may never read the rest. This report
+# includes both, in that order, rather than treating them as interchangeable.)
+# ===========================================================================
+add_heading(doc, "Abstract", level=1)
+add_para(doc,
+    "This report presents a comparative study of five denoising and channel-equalization "
+    "techniques — Least-Mean-Squares (LMS), Normalized LMS (NLMS), Recursive Least Squares (RLS), "
+    "a 1-D convolutional neural network (CNN) autoencoder, and a Hybrid LMS→CNN cascade — against "
+    "a No-Processing baseline and genie-aided linear MMSE/Zero-Forcing references, for BPSK, QPSK, "
+    "and 16-QAM signals under additive white Gaussian noise (AWGN) and static and time-varying "
+    "multipath fading. Four case studies each isolate a single channel variable — a memoryless AWGN "
+    "channel, a static multipath (inter-symbol interference, ISI) channel, a genuinely time-varying "
+    "channel, and higher-order (16-QAM) modulation — connected by three targeted follow-up analyses "
+    "(an ISI-severity sweep, a boundary-aware loss-function test, and a compute-cost analysis). The "
+    "central finding is that improved output SNR does not imply improved bit-error-rate (BER): on a "
+    "memoryless channel, every method tested is strictly worse than doing nothing (56/56 "
+    "comparisons), because the raw received sample is already a sufficient statistic for detection; "
+    "once real channel memory exists, the same methods reverse and can improve BER by up to 610×, "
+    "with the effect scaling with decision-boundary crowding (BPSK < QPSK < 16-QAM). Six real "
+    "implementation bugs, a missing standard baseline (Zero-Forcing), and several correlational "
+    "hypotheses were found, root-caused, and — in two cases — directly confirmed or refuted via "
+    "targeted interventions, using a discipline of checking every anomalous result against its "
+    "definitional identity before accepting it. The practical recommendation is channel- and "
+    "modulation-dependent: a CNN is preferred whenever real multipath structure exists and compute "
+    "allows; RLS, once given the same numerical hardening as LMS/NLMS, is the strongest classical "
+    "alternative under tight compute budgets."
+)
+add_para(doc,
+    "Index Terms — Adaptive filtering, LMS, NLMS, RLS, convolutional neural network, denoising "
+    "autoencoder, software-defined radio, channel equalization, bit error rate, inter-symbol "
+    "interference, Zero-Forcing, MMSE equalizer, BPSK, QPSK, 16-QAM.",
+    italic=True, size=10
+)
+
+doc.add_page_break()
+
+# ===========================================================================
 # Table of Contents
 # ===========================================================================
 add_heading(doc, "Table of Contents", level=1)
@@ -1426,6 +1467,39 @@ add_bullets(doc, [
     "RRC filter — a small, targeted check found the effect is small and directionally favorable, "
     "but a complete re-run to confirm this at full precision has not been done.",
 ])
+
+doc.add_page_break()
+
+# ===========================================================================
+# References
+# ===========================================================================
+add_heading(doc, "References", level=1)
+add_para(doc,
+    "External sources consulted for the literature comparison (Section 9.5) and for document "
+    "formatting/structure guidance, in citation order. All internal findings — every number, "
+    "table, and figure elsewhere in this report — are this project's own original results; the "
+    "sources below were used only to contextualize how they compare to, or were formatted "
+    "consistently with, prior published work."
+)
+references = [
+    "S. Kumar et al., \"Comparative Analysis of LMS, NLMS, and RLS Adaptive Filters in Vehicle "
+    "Automation Systems under Mixed Noise Conditions,\" ResearchGate, 2025.",
+    "\"Comparative Study of ZF, LMS and RLS Adaptive Equalization Techniques,\" arXiv:2312.06084, 2023.",
+    "Ignitarium / Neurealm, \"Adaptive Filters for Signal Processing: A Comparative Study,\" "
+    "Medium / company engineering blog.",
+    "\"Channel Equalization of Adaptive Filters Using LMS and RLS Algorithms,\" International "
+    "Journal of Creative Research Thoughts (IJCRT), rjpn.org.",
+    "R. Krishna, \"Autoencoders vs FIR Filters: Smarter Signal Denoising with ML and DSP,\" Medium, "
+    "2025.",
+    "Omdena, \"Denoising Autoencoders,\" Omdena engineering blog.",
+    "IEEE Author Center, \"Structure Your Article,\" IEEE Journals guidance, "
+    "journals.ieeeauthorcenter.ieee.org.",
+    "Open Oregon Educational Resources, \"10.3 Abstract and Executive Summary,\" Technical Writing "
+    "(open textbook), openoregon.pressbooks.pub.",
+    "Scribbr, \"Thesis & Dissertation Title Page,\" scribbr.com.",
+    "Simon Fraser University Library, \"Formatting Your Thesis: Title Page,\" lib.sfu.ca.",
+]
+add_numbered(doc, references)
 
 doc.add_page_break()
 
