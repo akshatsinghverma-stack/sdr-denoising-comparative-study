@@ -1,20 +1,36 @@
 # SDR Denoising Project
 
 [![tests](https://github.com/akshatsinghverma-stack/sdr-denoising-comparative-study/actions/workflows/tests.yml/badge.svg)](https://github.com/akshatsinghverma-stack/sdr-denoising-comparative-study/actions/workflows/tests.yml)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
+[![License: academic use](https://img.shields.io/badge/license-academic--use-lightgrey)](#license)
 
 **Comparative Study of Classical Adaptive Filtering and Deep Learning Based
 Denoising Techniques for SDR Communication Signals**
 
 Compares five denoising/equalization approaches — LMS, NLMS, RLS, a 1-D CNN
 autoencoder, and a Hybrid LMS→CNN cascade — against a No-Processing baseline
-and a genie-aided MMSE reference, for BPSK/QPSK/16-QAM signals under AWGN,
-multipath ISI, and time-varying fading. What began as two controlled case
-studies grew, through follow-up questions each result raised, into four case
-studies plus several connecting/diagnostic analyses — every addition was
-triggered by a specific gap or untested claim the previous result left open.
-See `report/report.md` for the full technical writeup, or
-`report/SDR_Denoising_Project_Report.docx` for a formatted version with
-figures, tables, and a table of contents.
+and a genie-aided MMSE/Zero-Forcing reference, for BPSK/QPSK/16-QAM signals
+under AWGN, multipath ISI, and time-varying fading. What began as two
+controlled case studies grew, through follow-up questions each result
+raised, into four case studies plus several connecting/diagnostic analyses —
+every addition was triggered by a specific gap or untested claim the
+previous result left open, and two full rounds of adversarial self-critique
+(four independent reviewer agents each) found and fixed real bugs rather
+than just polishing prose.
+
+📄 **[Full technical report](report/report.md)** · 📝 **[Formatted Word report](report/SDR_Denoising_Project_Report.docx)** (abstract, TOC, figures, tables, references) · 🔍 **[Deep-dive findings](report/)** (one file per diagnostic)
+
+**Author:** [Akshat Singh Verma](https://github.com/akshatsinghverma-stack) — B.Tech, Artificial Intelligence & Machine Learning, UPES
+
+## Contents
+
+- [Quick Start](#quick-start)
+- [Project Structure](#project-structure)
+- [Methods Compared](#methods-compared)
+- [Modulations & Channels](#modulations--channels)
+- [Key Findings](#key-findings)
+- [Assumptions & Limitations](#assumptions--limitations)
+- [Requirements](#requirements)
 
 ## Quick Start
 
@@ -49,8 +65,12 @@ python experiments/run_16qam_comparison.py
 python experiments/run_case1_boundary_loss.py          # boundary-aware CNN loss vs. plain MSE
 python experiments/compute_cost_analysis.py             # MACs/sample + wall-clock benchmark
 python experiments/run_rls_comparison.py                # RLS vs. LMS/NLMS on ISI
+python experiments/run_zf_comparison.py                 # Zero-Forcing vs. MMSE on ISI
 python experiments/diagnose_lms_nlms_asymmetry.py       # why NLMS doesn't benefit from DD tracking
+python experiments/test_nlms_floor_intervention.py      # falsification test for the NLMS mechanism above
+python experiments/test_nlms_floor_sensitivity.py       # sensitivity sweep for that intervention's floor value
 python experiments/diagnose_cnn_high_snr_floor.py       # root-causing the high-SNR CNN error floor
+python experiments/test_cnn_overlap_weighting_intervention.py  # tests a fix for the floor above (negative result)
 python experiments/diagnose_training_variance.py        # test-time vs. training-draw BER variance
 ```
 
@@ -86,8 +106,12 @@ sdr_denoising_project/
 │   ├── run_case1_boundary_loss.py      # Boundary-aware CNN loss follow-up
 │   ├── compute_cost_analysis.py        # MACs/sample + wall-clock compute-cost analysis
 │   ├── run_rls_comparison.py           # RLS vs. LMS/NLMS/MMSE on Case Study 2's channel
+│   ├── run_zf_comparison.py            # Zero-Forcing vs. MMSE on Case Study 2's channel
 │   ├── diagnose_lms_nlms_asymmetry.py  # Root-causes LMS-vs-NLMS DD-tracking asymmetry
+│   ├── test_nlms_floor_intervention.py # Falsification test for the NLMS mechanism above
+│   ├── test_nlms_floor_sensitivity.py  # Sensitivity sweep for the floor value used above
 │   ├── diagnose_cnn_high_snr_floor.py  # Root-causes the loss-independent high-SNR CNN floor
+│   ├── test_cnn_overlap_weighting_intervention.py  # Tests a fix for the floor above (negative result)
 │   ├── diagnose_training_variance.py   # Test-time vs. training-draw BER variance
 │   └── run_all.py                      # Alias of run_case1_no_isi.py
 ├── tests/                        # Regression test suite (58 tests, ~30s) -- see below
@@ -190,7 +214,7 @@ sdr_denoising_project/
    a channel-model design claim ("looks static during the preamble") that
    was asserted but never measured and turned out to be false for the
    actual parameters used (see
-   `report/findings_preamble_drift_correction.md`).
+   [report/findings_preamble_drift_correction.md](report/findings_preamble_drift_correction.md)).
 9. **Two named interventions were then actually run, not left as
    correlational guesses** — with one honest negative result and one real
    correction. Flooring NLMS's normalization denominator measurably closed
@@ -198,7 +222,7 @@ sdr_denoising_project/
    confirming that mechanism by direct test. Reweighting the CNN's
    overlap-add reconstruction did **not** close the high-SNR error floor —
    reported as a negative result rather than omitted. Separately, RLS
-   (Section 4.8 in `report/report.md`) was re-evaluated after adding
+   (Section 4.8 in [report/report.md](report/report.md)) was re-evaluated after adding
    Polyak/Ruppert tail-averaging (the same hardening LMS/NLMS already had):
    the corrected result reverses this project's own first-pass finding —
    RLS now matches or beats LMS/NLMS at *every* SNR level tested, not just
@@ -207,7 +231,7 @@ sdr_denoising_project/
    (ZF), was also added after comparing against published equalization
    literature rather than re-reading this project's own code.
 
-See `report/report.md` for the full mechanism and verification behind each
+See [report/report.md](report/report.md) for the full mechanism and verification behind each
 finding, and the `report/findings_*.md` files for the deep-dive write-up
 behind each diagnostic.
 
@@ -239,7 +263,7 @@ behind each diagnostic.
    specific stated reason): MLSE/Viterbi equalization, a full 8-PSK pipeline
    run, cycle-accurate hardware validation of the compute-cost analysis, and
    fixing the SPS>1 decision-directed update rule itself — see
-   `report/report.md` Section 11 for the complete list and reasoning.
+   [report/report.md](report/report.md) Section 11 for the complete list and reasoning.
 
 ## Requirements
 

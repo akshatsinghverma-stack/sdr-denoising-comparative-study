@@ -522,9 +522,7 @@ These were deliberately not attempted in this round, each for a specific reason 
 
 ## References
 
-All findings, numbers, tables, and figures elsewhere in this report are this project's own original results. The technical sources below ([1]-[6]) are cited by number at the specific claims they support in Section 9.5; they contextualize how this project's own measurements compare to prior published work, never as a substitute for this project's own measurements. A second list credits sources consulted for this report's own formatting and structure — not cited for any technical/numerical claim.
-
-**Technical literature (cited in Section 9.5):**
+All findings, numbers, tables, and figures elsewhere in this report are this project's own original results. The sources below are cited by number at the specific claims they support in Section 9.5; they contextualize how this project's own measurements compare to prior published work, never as a substitute for this project's own measurements.
 
 1. S. Kumar et al., "Comparative Analysis of LMS, NLMS, and RLS Adaptive Filters in Vehicle Automation Systems under Mixed Noise Conditions," ResearchGate, 2025.
 2. "Comparative Study of ZF, LMS and RLS Adaptive Equalization Techniques," arXiv:2312.06084, 2023.
@@ -532,10 +530,3 @@ All findings, numbers, tables, and figures elsewhere in this report are this pro
 4. "Channel Equalization of Adaptive Filters Using LMS and RLS Algorithms," International Journal of Creative Research Thoughts (IJCRT), rjpn.org, n.d.
 5. R. Krishna, "Autoencoders vs FIR Filters: Smarter Signal Denoising with ML and DSP," Medium, 2025.
 6. Omdena, "Denoising Autoencoders," Omdena engineering blog, n.d.
-
-**Document formatting and structure guidance (not cited for technical content):**
-
-- IEEE Author Center, "Structure Your Article," IEEE Journals guidance, journals.ieeeauthorcenter.ieee.org, n.d.
-- Open Oregon Educational Resources, "10.3 Abstract and Executive Summary," Technical Writing (open textbook), openoregon.pressbooks.pub, n.d.
-- Scribbr, "Thesis & Dissertation Title Page," scribbr.com, n.d.
-- Simon Fraser University Library, "Formatting Your Thesis: Title Page," lib.sfu.ca, n.d.

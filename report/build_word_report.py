@@ -1497,14 +1497,10 @@ doc.add_page_break()
 add_heading(doc, "References", level=1)
 add_para(doc,
     "All findings, numbers, tables, and figures elsewhere in this report are this project's own "
-    "original results. The technical sources below ([1]-[6]) are cited by number at the specific "
-    "claims they support in Section 9.5; they were used only to contextualize how this project's "
-    "own measurements compare to prior published work, never as a substitute for this project's own "
-    "measurements. A second, separate list credits sources consulted for this report's own "
-    "formatting and structure (title page, abstract/executive-summary conventions) — these are not "
-    "cited for any technical/numerical claim and are listed separately to avoid conflating the two."
+    "original results. The sources below are cited by number at the specific claims they support "
+    "in Section 9.5; they were used only to contextualize how this project's own measurements "
+    "compare to prior published work, never as a substitute for this project's own measurements."
 )
-add_heading(doc, "Technical literature (cited in Section 9.5)", level=2)
 references = [
     "S. Kumar et al., \"Comparative Analysis of LMS, NLMS, and RLS Adaptive Filters in Vehicle "
     "Automation Systems under Mixed Noise Conditions,\" ResearchGate, 2025.",
@@ -1518,16 +1514,6 @@ references = [
     "Omdena, \"Denoising Autoencoders,\" Omdena engineering blog, n.d.",
 ]
 add_numbered(doc, references)
-add_heading(doc, "Document formatting and structure guidance (not cited for technical content)", level=2)
-formatting_refs = [
-    "IEEE Author Center, \"Structure Your Article,\" IEEE Journals guidance, "
-    "journals.ieeeauthorcenter.ieee.org, n.d.",
-    "Open Oregon Educational Resources, \"10.3 Abstract and Executive Summary,\" Technical Writing "
-    "(open textbook), openoregon.pressbooks.pub, n.d.",
-    "Scribbr, \"Thesis & Dissertation Title Page,\" scribbr.com, n.d.",
-    "Simon Fraser University Library, \"Formatting Your Thesis: Title Page,\" lib.sfu.ca, n.d.",
-]
-add_bullets(doc, formatting_refs)
 
 doc.add_page_break()
 
