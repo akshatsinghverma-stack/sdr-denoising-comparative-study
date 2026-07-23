@@ -4,6 +4,21 @@ RLS Adaptive Filter
 Recursive Least Squares adaptive filter for complex-valued signals.
 Provides faster convergence than LMS/NLMS, particularly for correlated inputs
 (like ISI channels), at the expense of higher computational complexity.
+
+Decision-directed default (see src/lms_filter.py module docstring for the
+full history): this module's original implementation continued adapting
+past the preamble by default, gated only by `np.abs(d - y) <= freeze_threshold`
+with a loose default threshold (2.0) that almost always passes -- exactly the
+"gating on |decision - output|" pattern documented in Section 3.2 as broken
+(that residual is small whenever y is close to *any* constellation point,
+right or wrong, so it cannot actually detect a bad decision). Since this
+class was unused anywhere in the project when that hardening was done, the
+same fix applies here now, before its first real use (Case Study 2's RLS
+baseline): decision-directed continuation defaults OFF
+(`enable_decision_directed=False`), matching LMSFilter/NLMSFilter's
+established safe default -- on a static channel, freezing after the preamble
+matches or beats continued adaptation (Section 3.2), so there is nothing to
+lose by defaulting to the safe choice here too.
 """
 
 import numpy as np
@@ -28,7 +43,24 @@ class RLSFilter:
     _weights: np.ndarray = field(default=None, repr=False)
     _error_history: list = field(default_factory=list, repr=False)
 
-    def denoise(self, clean: np.ndarray, noisy: np.ndarray, training_length: int = 1000, modulation: str = "BPSK", freeze_threshold: float = 2.0):
+    def denoise(self, clean: np.ndarray, noisy: np.ndarray, training_length: int = 1000,
+                modulation: str = "BPSK", enable_decision_directed: bool = False,
+                freeze_threshold: float = 2.0):
+        """Denoise a complex signal using RLS with a preamble + (optional)
+        Decision-Directed continuation.
+
+        Parameters
+        ----------
+        enable_decision_directed : bool
+            If False (default, the safe choice for a time-invariant channel --
+            see module docstring), the filter holds its preamble-converged
+            weights fixed for the rest of the signal, identical in spirit to
+            LMSFilter/NLMSFilter's default. If True, RLS continues adapting
+            using its own hard decisions, gated only by the (weak)
+            `freeze_threshold` check -- not recommended without the same
+            reliability/confidence gating LMS/NLMS use, which this class does
+            not yet implement.
+        """
         N = len(noisy)
         w = np.zeros(self.num_taps, dtype=np.complex128)
         P = np.eye(self.num_taps, dtype=np.complex128) / self.delta
@@ -43,29 +75,32 @@ class RLSFilter:
         for n in range(self.num_taps, N):
             x = noisy[n : n - self.num_taps : -1]
             y = np.vdot(w, x)  # w^H x
-            
+
             if n < training_length:
                 d = clean[n]
                 update = True
-            else:
+            elif enable_decision_directed:
                 d = decide(y)
                 update = (freeze_threshold is None) or (np.abs(d - y) <= freeze_threshold)
+            else:
+                d = decide(y)  # for error-tracking only; weights stay frozen
+                update = False
 
             e = d - y
-            
+
             if update:
                 # Calculate Kalman gain k
                 Px = P @ x
                 xH_P = np.conj(x).T @ P
                 denom = self.lam + np.vdot(x, Px) # x^H P x
                 k = Px / denom
-                
+
                 # Update weights
                 w = w + k * np.conj(e)
-                
+
                 # Update inverse correlation matrix
                 P = (P - np.outer(k, xH_P)) / self.lam
-                
+
             output[n] = y
             errors[n] = e
 
