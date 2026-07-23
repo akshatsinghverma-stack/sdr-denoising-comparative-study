@@ -394,7 +394,7 @@ meta_table.alignment = WD_TABLE_ALIGNMENT.CENTER
 meta_rows = [
     ("Scope", "4 case studies + 3 connecting analyses (severity sweep, boundary-aware loss, compute cost)"),
     ("This document", "Self-contained — includes full methodology, results, verification, and conclusions"),
-    ("Verification", "35-test regression suite · 4 real bugs found, root-caused, and fixed (Section 4.2, 6.2)"),
+    ("Verification", "51-test regression suite (CI-enforced) · 5 real bugs found, root-caused, and fixed (Section 4.2, 6.2, 4.9)"),
     ("Source code", "Available on request — see Appendix for the experiment/module file list"),
 ]
 for i, (k, v) in enumerate(meta_rows):
@@ -446,12 +446,12 @@ set_page_number_format(body_section, fmt="decimal", start=1)
 # ===========================================================================
 add_heading(doc, "Executive Summary", level=1)
 add_para(doc,
-    "This project compares four denoising/equalization approaches — LMS, NLMS, a 1-D CNN "
+    "This project compares five denoising/equalization approaches — LMS, NLMS, RLS, a 1-D CNN "
     "autoencoder, and a Hybrid LMS→CNN cascade — against a No-Processing baseline, for BPSK, "
     "QPSK, and 16-QAM signals from -10dB to +30dB SNR. What began as two controlled case studies "
-    "grew, through follow-up questions each result raised, into four case studies plus three "
-    "connecting analyses — every addition was triggered by a specific gap or untested claim the "
-    "previous result left open, not added for its own sake."
+    "grew, through follow-up questions each result raised, into four case studies plus several "
+    "connecting analyses and diagnostics — every addition was triggered by a specific gap or "
+    "untested claim the previous result left open, not added for its own sake."
 )
 add_callout(doc,
     "Headline finding: SNR improvement does not imply BER improvement, and whether any of these "
@@ -489,6 +489,21 @@ add_numbered(doc, [
     "yet is paradoxically faster in wall-clock terms on this project's CPU stack — a finding about "
     "implementation efficiency, not algorithmic cost, with a concrete hardware-deployment answer "
     "either way.",
+    "The LMS-vs-NLMS decision-directed asymmetry from Case Study 3 was root-caused, not left as a "
+    "hypothesis: NLMS's instantaneous-power step-size normalization measurably inflates its "
+    "effective step size during channel fades (confirmed in 15/15 engaged trials), while LMS's "
+    "fixed step size does the opposite (16/16 trials) — a real, 100%-consistent mechanism.",
+    "The high-SNR CNN error floor was also root-caused: a window/overlap-add reconstruction "
+    "artifact, confirmed via an 81.1% same-position overlap between loss functions and a "
+    "statistically significant (χ²=168.0, p=3.5×10⁻³⁶) clustering by window phase — ruling out "
+    "\"unfixable noise\" as the primary cause.",
+    "Training the CNN once per case study (rather than across several seeds) was validated, not "
+    "just assumed: training-draw variance is consistently smaller than test-time Monte Carlo "
+    "variance across every condition tested.",
+    "RLS, added as a third classical baseline after fixing a real safety bug (an unguarded "
+    "decision-directed default), produced a genuinely nuanced result: worse than LMS/NLMS at "
+    "low-to-moderate SNR, but strictly better at high SNR — not the simple \"RLS always wins\" "
+    "result its theoretical motivation alone would predict.",
 ])
 
 doc.add_page_break()
@@ -550,23 +565,27 @@ doc.add_page_break()
 # ===========================================================================
 add_heading(doc, "1. Objective", level=1)
 add_para(doc,
-    "Compare four denoising/equalization approaches against a No-Processing baseline, for BPSK, "
+    "Compare five denoising/equalization approaches against a No-Processing baseline, for BPSK, "
     "QPSK, and 16-QAM signals corrupted by AWGN, multipath ISI, and (in one follow-up) time-varying "
-    "fading. The project is organized as four case studies plus three connecting analyses, each "
-    "generated directly by a gap or unverified claim in a previous result:"
+    "fading. The project is organized as four case studies plus several connecting analyses and "
+    "diagnostics, each generated directly by a gap or unverified claim in a previous result:"
 )
 add_bullets(doc, [
     "Case Study 1 (Section 3): a memoryless AWGN channel (no pulse shaping, no ISI).",
     "Case Study 2 (Section 4): the same methods, unchanged, on a channel with real ISI (RRC pulse "
-    "shaping at 4x oversampling + a static multipath channel), plus a genie-aided MMSE equalizer.",
+    "shaping at 4x oversampling + a static multipath channel), plus a genie-aided MMSE equalizer "
+    "and, as a follow-up, RLS as a third classical baseline (Section 4.9).",
     "ISI Severity Sweep (Section 5): connects Case Studies 1 and 2 by scaling channel severity "
     "continuously between them.",
     "Case Study 3 (Section 6): a genuinely time-varying channel, testing whether freezing LMS/NLMS "
-    "after the preamble is still the right call once the channel actually moves.",
+    "after the preamble is still the right call once the channel actually moves, and root-causing "
+    "why LMS benefits from tracking while NLMS does not.",
     "Case Study 4 (Section 7): 16-QAM, testing whether decision-boundary crowding keeps sharpening "
     "the equalization story as the constellation gets more crowded.",
-    "Boundary-Aware Loss (Section 3.7): turns Case Study 1's diagnosis of why CNN loses to "
-    "No-Processing into a tested, partially-confirmed causal claim.",
+    "Boundary-Aware Loss and Training-Variance (Sections 3.7-3.8): turns Case Study 1's diagnosis "
+    "of why CNN loses to No-Processing into a tested, partially-confirmed causal claim, root-causes "
+    "the resulting high-SNR error floor, and quantifies how much training randomness (vs. test-time "
+    "randomness) contributes to reported BER variance.",
     "Compute-Cost Analysis (Section 8): supplements every BER/SNR comparison with a "
     "hardware-portable answer to how much each method actually costs to run.",
 ])
@@ -693,6 +712,44 @@ add_para(doc,
     "pays off where boundary ambiguity, not some other structural error source, dominates. Full "
     "detail: report/findings_boundary_aware_loss.md."
 )
+add_callout(doc,
+    "Root-caused since: the loss-independent high-SNR floor is the CNN's window/overlap-add "
+    "reconstruction — 81.1% same-position overlap between MSE and Hinge, a statistically significant "
+    "(χ²=168.0, p=3.5×10⁻³⁶) non-uniform clustering by window phase, and only 15.1% overlap with "
+    "No-Processing's own errors (ruling out \"unfixable noise\")."
+)
+add_para(doc,
+    "Position-level tracking of every floor error (`report/findings_cnn_high_snr_floor.md`) found: "
+    "(1) MSE and Hinge fail at the same symbol position 81.1% of the time (98.8-100% for BPSK) — far "
+    "beyond chance given how sparse these errors are; (2) those positions cluster non-uniformly within "
+    "the window-overlap cycle (symbol_index mod 64), declining monotonically from window-start to "
+    "window-end (317/306/205/75 across four quartiles), confirmed against the uniform null by a "
+    "chi-square test; (3) only 15.1% of these positions were also wrong for No-Processing's raw "
+    "hard-decision — 84.9% of the time the CNN introduces a new error rather than failing on an "
+    "already-lost sample; (4) noise magnitude at these positions is only mildly elevated (1.39-1.64x "
+    "typical), not the large outlier a \"structurally hard sample\" explanation would predict. Together "
+    "this confirms a genuine, loss-independent, position-dependent reconstruction weak spot, not "
+    "unfixable noise."
+)
+
+add_heading(doc, "3.8 Follow-Up: Is Training the CNN Once Enough?", level=2)
+add_para(doc,
+    "This project's practice (every case study) is to train each CNN/Hybrid model exactly once per "
+    "modulation, then report Monte Carlo variance across test-time noise/bit-sequence draws only. The "
+    "variance contributed by the training draw itself was previously unmeasured."
+)
+add_callout(doc,
+    "5 independently-seeded CNNs, evaluated on identical test data, show training-draw variance is "
+    "consistently smaller than test-time variance across all 4 conditions tested (ratio 0.00-0.32x) — "
+    "this project's practice of training once is justified, not an underestimate of true uncertainty."
+)
+add_para(doc,
+    "At 15dB, five independently-trained BPSK models produced the exact same mean BER to 6 decimal "
+    "places; QPSK's five were within 3% of each other. At 0dB (noisier), the ratio is largest (0.32x "
+    "for QPSK) but still well under 1. This is also consistent with the high-SNR floor being a "
+    "structural, architecture-driven property (Section 3.7) rather than something training randomness "
+    "could shift. Full detail: report/findings_training_variance.md."
+)
 
 doc.add_page_break()
 
@@ -804,6 +861,40 @@ add_figure(doc, c2fig / "convergence_BPSK.png", "Adaptive filter convergence, BP
 add_figure(doc, c2fig / "convergence_QPSK.png", "Adaptive filter convergence, QPSK, Case Study 2")
 
 doc.add_page_break()
+add_heading(doc, "4.9 Follow-Up: RLS as a Third Classical Baseline", level=2)
+add_para(doc,
+    "RLS was originally excluded from Case Study 2 to keep exactly one variable (the channel) "
+    "different from Case Study 1. Before this first real use, src/rls_filter.py — implemented but "
+    "unused — needed a real safety fix: it defaulted to unguarded decision-directed continuation, "
+    "the same broken |d-y|-threshold pattern already fixed for LMS/NLMS (Section 3.2). Hardened to "
+    "frozen-by-default first (16 new regression tests), then run at Case Study 2's full scale."
+)
+add_callout(doc,
+    "Not the simple \"RLS wins\" result the future-work rationale predicted: RLS is measurably WORSE "
+    "than LMS/NLMS at low-to-moderate SNR (5-19% more errors) but strictly BETTER at high SNR (zero "
+    "errors at 15-20dB where LMS/NLMS retain a residual floor)."
+)
+rls_rows = [
+    ["-10 to 5", "0.85-0.92x (RLS worse)", "0.85-0.95x (RLS worse)", "0.88-0.91x (RLS worse)", "0.89-0.92x (RLS worse)"],
+    ["10", "1.27x (RLS wins)", "1.54x (RLS wins)", "0.84x (RLS still worse)", "0.90x (RLS still worse)"],
+    ["15-20", "inf (RLS: 0 err)", "inf (RLS: 0 err)", "inf (RLS: 0 err)", "inf (RLS: 0 err)"],
+]
+add_table_caption(doc, "BER ratio (LMS or NLMS BER / RLS BER, >1 = RLS wins) by SNR")
+add_table(doc, ["SNR (dB)", "BPSK: LMS/RLS", "BPSK: NLMS/RLS", "QPSK: LMS/RLS", "QPSK: NLMS/RLS"], rls_rows)
+doc.add_paragraph()
+add_para(doc,
+    "A plausible (not verified) explanation: LMS/NLMS were extensively hardened for low-SNR stability "
+    "(clamped step size, Polyak/Ruppert tail-averaging), while RLSFilter has no equivalent "
+    "tail-averaging and an untuned λ=0.99 — a per-SNR-tuned forgetting factor is the natural next "
+    "step, named rather than chased down further. RLS is also cheaper per-sample than NLMS in this "
+    "implementation despite its higher algorithmic complexity, another instance of Section 8's "
+    "compute-vs-wall-clock finding. Full detail: report/findings_rls_comparison.md."
+)
+rlsfig = FIGURES_DIR / "rls_comparison"
+add_figure(doc, rlsfig / "ber_vs_snr_BPSK.png", "BER vs Input SNR incl. RLS, BPSK")
+add_figure(doc, rlsfig / "ber_vs_snr_QPSK.png", "BER vs Input SNR incl. RLS, QPSK")
+
+doc.add_page_break()
 
 # ===========================================================================
 # 5. Severity Sweep
@@ -886,6 +977,17 @@ add_callout(doc,
     "flat-to-worse at every SNR, with a 37.5% engage-and-diverge rate matching this project's "
     "originally-documented “~30-40% of trials” almost exactly."
 )
+add_para(doc,
+    "This asymmetry has since been root-caused, not just hypothesized (report/findings_lms_nlms_"
+    "asymmetry.md): an instrumented reimplementation of both filters' update equations — verified to "
+    "reproduce production BER exactly before being trusted — measured the correlation between the "
+    "channel's instantaneous envelope and each method's effective step size across all 31 DD-engaged "
+    "trials. The result splits perfectly by method, zero exceptions: all 16 engaged LMS trials show a "
+    "fade shrinking its update-vector norm (fixed step size × small input = small update); all 15 "
+    "engaged NLMS trials show the opposite — a fade inflating NLMS's effective step size, exactly "
+    "when wrong decisions are most likely. NLMS's update-norm during wrong decisions averages 1.23x "
+    "its own median (correcting harder when wrong); LMS averages 0.46x (gentlest when wrong)."
+)
 
 add_heading(doc, "6.4 Conclusion", level=2)
 add_para(doc,
@@ -903,6 +1005,8 @@ add_heading(doc, "Figures", level=2)
 tvfig = FIGURES_DIR / "timevarying"
 add_figure(doc, tvfig / "frozen_vs_dd_BPSK.png", "Frozen vs. Decision-Directed, BPSK, time-varying channel")
 add_figure(doc, tvfig / "frozen_vs_dd_QPSK.png", "Frozen vs. Decision-Directed, QPSK, time-varying channel")
+add_figure(doc, tvfig / "lms_nlms_asymmetry_diagnostic.png",
+           "LMS vs. NLMS update-norm and channel envelope, illustrative diverging trial")
 
 doc.add_page_break()
 
@@ -1068,6 +1172,21 @@ add_numbered(doc, [
     "Compute cost and BER cost do not move together, and both need to be reported — CNN's 106-212x "
     "compute multiplier is invisible in this project's own wall-clock numbers, which would mislead "
     "anyone judging real-hardware feasibility from them alone.",
+    "A named, previously-unverified hypothesis was tested and confirmed with 100% trial-level "
+    "consistency: every one of 16 engaged LMS trials shows a fade shrinking its update-vector norm, "
+    "and every one of 15 engaged NLMS trials shows the opposite — a fade inflating NLMS's effective "
+    "step size, exactly when wrong decisions are most likely.",
+    "The same discipline resolved a second previously-open question: the high-SNR CNN error floor "
+    "was confirmed (χ²=168.0, p=3.5×10⁻³⁶) as a window/overlap-add reconstruction artifact, ruling "
+    "out the competing \"unfixable noise\" hypothesis.",
+    "This project's single-training-draw practice was quantitatively validated, not just assumed: "
+    "training-draw variance is consistently smaller than test-time Monte Carlo variance across all "
+    "4 conditions tested (ratio 0.00-0.32x).",
+    "RLS, added as a third classical baseline, required fixing a real safety bug before its first "
+    "use (an unguarded decision-directed default, the same broken-gate pattern already fixed for "
+    "LMS/NLMS) and then produced a genuinely nuanced result: measurably worse than LMS/NLMS at "
+    "low-to-moderate SNR but strictly better at high SNR — an algorithm's textbook advantage "
+    "doesn't automatically transfer without the same hardening applied elsewhere in this project.",
 ])
 
 doc.add_page_break()
@@ -1094,21 +1213,26 @@ add_bullets(doc, [
 ])
 
 add_heading(doc, "Named, Scoped-Out Future Work", level=2)
-add_para(doc, "Two items from the original future-work list have since been addressed and are marked accordingly; each surfaced new, more specific follow-ups of its own.")
+add_para(doc, "Six items from the original future-work list have since been addressed and are marked accordingly; each surfaced new, more specific follow-ups of its own.")
 add_bullets(doc, [
-    "RLS as a third classical baseline (src/rls_filter.py exists, unused) — ISI is exactly the "
-    "regime where RLS's faster convergence over LMS/NLMS should show a real edge.",
-    "MLSE/Viterbi equalization — the classical gold-standard for ISI channels.",
+    "DONE — RLS as a third classical baseline (Section 4.9): not the simple \"RLS wins\" result "
+    "predicted — worse than LMS/NLMS at low-to-moderate SNR, better at high SNR. Required fixing "
+    "an unguarded decision-directed default first. New follow-up: a per-SNR-tuned forgetting "
+    "factor or tail-averaged RLS estimate to test whether the low-SNR shortfall closes.",
+    "MLSE/Viterbi equalization — the classical gold-standard for ISI channels — still open.",
     "DONE (Case Study 3) — a genuinely time-varying channel. New follow-ups: fix the DD update "
-    "rule for SPS>1; root-cause the LMS-vs-NLMS tracking asymmetry; re-run the flat-fading control "
-    "at SPS=4 once the fix exists.",
+    "rule for SPS>1; ~~root-cause the LMS-vs-NLMS tracking asymmetry~~ DONE (confirmed with 100% "
+    "trial-level consistency); re-run the flat-fading control at SPS=4 once the DD fix exists.",
     "DONE for 16-QAM (Case Study 4) — a working, self-tested 8-PSK implementation exists but "
     "wasn't run through the full pipeline; also open: root-causing 16-QAM's hard No-Processing "
     "floor and MMSE regression more precisely.",
-    "Root-cause the loss-independent high-SNR error floor found in the boundary-aware-loss "
-    "follow-up (plain-MSE and boundary-hinge CNNs produce identical error counts at 10-20dB).",
-    "Multiple independent training draws — Monte Carlo trials vary test noise/bits; the CNN/LMS/"
-    "Hybrid models were each trained exactly once per modulation per case study.",
+    "DONE — root-cause the loss-independent high-SNR error floor: confirmed as a window/overlap-"
+    "add reconstruction artifact (χ²=168.0, p=3.5×10⁻³⁶), ruling out \"unfixable noise.\" New "
+    "follow-up: a triangular/cosine overlap-add weighting or smaller stride to test whether this "
+    "specific floor can be closed.",
+    "DONE — multiple independent training draws: training-draw variance is consistently smaller "
+    "than test-time variance (ratio 0.00-0.32x across all 4 conditions tested) — not yet extended "
+    "to Hybrid or Case Study 2's ISI channel.",
     "Cycle-accurate hardware validation of the compute-cost analysis — the MAC-count-based "
     "throughput requirements were not validated against an actual microcontroller, DSP, or NPU.",
 ])
@@ -1119,9 +1243,12 @@ doc.add_page_break()
 # Appendix
 # ===========================================================================
 add_heading(doc, "Appendix: Project Structure & Regression Test Suite", level=1)
-add_para(doc, "A 35-test regression suite (tests/, ~25s to run) codifies every invariant discovered during this project:")
+add_para(doc, "A CI-enforced, ~51-test regression suite (tests/, ~25s to run, run automatically on "
+    "every push via GitHub Actions) codifies every invariant discovered during this project:")
 add_bullets(doc, [
     "test_lms_stability.py — LMS/NLMS never diverge below No-Processing; DD mode off by default.",
+    "test_rls_stability.py — RLS never diverges below No-Processing; DD mode off by default "
+    "(16 tests, added when RLS was hardened before its first real use, Section 4.9).",
     "test_receiver_frontend.py — matched filter recovers unit gain; No-Processing's SNR matches "
     "nominal (the identity that caught two of the three Case Study 2 bugs).",
     "test_channel.py — add_multipath is a true identity and causal (the identity that caught the "
@@ -1134,11 +1261,13 @@ add_para(doc,
     "Every experiment referenced in this report lives as a standalone Python script under "
     "experiments/ (e.g. run_case1_no_isi.py, run_case2_isi.py, run_severity_sweep.py, "
     "run_timevarying_channel.py, run_16qam_comparison.py, run_case1_boundary_loss.py, "
-    "compute_cost_analysis.py), with shared logic in src/ (signal_gen.py, channel.py, "
-    "lms_filter.py, nlms_filter.py, mmse_equalizer.py, utils.py, metrics.py) and a CNN-specific "
-    "module (cnn_boundary_aware.py). Raw results are stored as CSVs under results/tables/ and "
-    "figures under results/figures/, organized by case study. This report is the complete, "
-    "self-contained writeup of that codebase's methodology, results, and conclusions."
+    "compute_cost_analysis.py, run_rls_comparison.py, diagnose_lms_nlms_asymmetry.py, "
+    "diagnose_cnn_high_snr_floor.py, diagnose_training_variance.py), with shared logic in src/ "
+    "(signal_gen.py, channel.py, lms_filter.py, nlms_filter.py, rls_filter.py, mmse_equalizer.py, "
+    "utils.py, metrics.py) and a CNN-specific module (cnn_boundary_aware.py). Raw results are "
+    "stored as CSVs under results/tables/ and figures under results/figures/, organized by case "
+    "study. This report is the complete, self-contained writeup of that codebase's methodology, "
+    "results, and conclusions."
 )
 
 set_update_fields_on_open(doc)
