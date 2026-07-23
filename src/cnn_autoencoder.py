@@ -58,7 +58,8 @@ def make_windows(signal_2ch: np.ndarray, window_len: int = 128, stride: int = 64
 
 
 def reconstruct_from_windows(windows: np.ndarray, original_len: int,
-                             window_len: int = 128, stride: int = 64):
+                             window_len: int = 128, stride: int = 64,
+                             weighting: str = "uniform"):
     """Overlap-add reconstruction from windowed predictions.
 
     Parameters
@@ -66,17 +67,37 @@ def reconstruct_from_windows(windows: np.ndarray, original_len: int,
     windows : np.ndarray, shape (num_windows, window_len, 2)
     original_len : int
         Length of the original signal.
+    weighting : {"uniform", "triangular"}
+        "uniform" (default) reproduces the ORIGINAL behavior exactly (every
+        sample in every overlapping window counted equally) -- every
+        existing experiment in this project uses this default and is
+        unaffected. "triangular" is the intervention named in
+        report/findings_cnn_high_snr_floor.md to test whether the
+        high-SNR error floor (found to cluster non-uniformly near one side
+        of the window-overlap cycle) is a reconstruction-weighting artifact:
+        it downweights each window's own edges relative to its center, so an
+        interior sample's two overlapping predictions are blended favoring
+        whichever window evaluated it closer to that window's own center.
 
     Returns
     -------
     signal : np.ndarray, shape (original_len, 2)
     """
+    if weighting == "uniform":
+        w = np.ones(window_len, dtype=np.float64)
+    elif weighting == "triangular":
+        center = (window_len - 1) / 2.0
+        w = 1.0 - np.abs(np.arange(window_len) - center) / (center + 1.0)
+        w = np.clip(w, 1e-3, 1.0)  # never fully zero out an edge sample
+    else:
+        raise ValueError(f"Unknown weighting {weighting!r}, expected 'uniform' or 'triangular'")
+
     output = np.zeros((original_len, 2), dtype=np.float64)
     counts = np.zeros(original_len, dtype=np.float64)
 
     for i, s in enumerate(range(0, original_len - window_len + 1, stride)):
-        output[s : s + window_len] += windows[i]
-        counts[s : s + window_len] += 1.0
+        output[s : s + window_len] += windows[i] * w[:, None]
+        counts[s : s + window_len] += w
 
     # Avoid division by zero for tail samples not covered by any window
     counts[counts == 0] = 1.0
@@ -165,8 +186,12 @@ def train_autoencoder(X_train, Y_train, X_val, Y_val,
 
 
 def denoise_signal(model, noisy_signal: np.ndarray,
-                   window_len: int = 128, stride: int = 64) -> np.ndarray:
+                   window_len: int = 128, stride: int = 64,
+                   weighting: str = "uniform") -> np.ndarray:
     """Denoise a full-length complex signal using the trained autoencoder.
+
+    weighting: passed through to reconstruct_from_windows (default "uniform"
+    = original, unchanged behavior).
 
     Returns complex IQ array of the same length as input.
     """
@@ -176,5 +201,5 @@ def denoise_signal(model, noisy_signal: np.ndarray,
 
     pred_windows = model.predict(windows, verbose=0)
     reconstructed = reconstruct_from_windows(pred_windows, original_len,
-                                             window_len, stride)
+                                             window_len, stride, weighting=weighting)
     return _real_to_iq(reconstructed)

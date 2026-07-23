@@ -68,27 +68,36 @@ extreme.** Mean ratio to the trial's typical (median) noise magnitude is
 1.64x (median 1.39x) — a mild elevation, far short of the large outlier
 ratios (3-5x+) a genuine noise-tail explanation would predict.
 
+## Intervention: testing the proposed fix — a negative result, reported honestly
+
+The named next step was to change the overlap-add weighting (downweighting each window's own
+least-reliable edge) and check whether the floor specifically shrinks. This was implemented
+(`reconstruct_from_windows(..., weighting="triangular")`, `src/cnn_autoencoder.py` — default
+`"uniform"` reproduces the original behavior exactly, so no existing experiment is affected) and
+tested directly: a single trained CNN's window-level predictions were computed once, then
+reconstructed twice — once with the original uniform weighting, once with triangular — isolating
+the reconstruction scheme as the only variable (`experiments/test_cnn_overlap_weighting_intervention.py`).
+
+**Result: triangular weighting did not shrink the floor.** BPSK error counts were identical at
+every SNR tested (84/84, 83/83, 83/83 at 10/15/20dB); QPSK was unchanged at 15-20dB (0/0 both) and
+very slightly *worse*, not better, at 10dB (98 errors uniform vs. 100 triangular, out of 100,000
+bits) — the opposite direction of the predicted effect, though small enough to plausibly be noise
+at this scale.
+
 ## Conclusion
 
-**The window/overlap-add reconstruction artifact (hypothesis 1) is strongly and consistently
-evidenced as the dominant cause; the "structurally hard sample" explanation (hypothesis 2) is not
-supported as the primary driver — but this is observational, not interventional, evidence, and
-should be described accordingly.** All four lines of evidence point the same direction: the two
-loss functions fail at the same positions (shared architectural cause), those positions have a
-highly significant, non-uniform phase pattern within the window-overlap cycle (a positional
-signature, not a noise-magnitude signature), the raw signal was usually already fine there (ruling
-out "unfixable" noise), and the noise present is only mildly, not extremely, elevated. This is much
-stronger than a single plausible-sounding hypothesis, but no counterfactual was run — changing the
-overlap-add scheme (a triangular/cosine weighting, or a smaller stride) and confirming the floor
-specifically shrinks in the predicted way was not attempted here, only proposed. Until that
-intervention is run, this remains the best-supported explanation consistent with every measurement
-taken, not a demonstrated causal mechanism in the strict sense. This turns the report's
-"not root-caused, two guesses offered" status into a specific, evidenced (though not yet
-interventionally confirmed) mechanism: the CNN's window-based inference has a genuine,
-loss-independent reconstruction weak spot tied to position within its
-own 128-sample window, most concentrated toward one side of the overlap
-cycle — a concrete, testable target for future work (e.g., a triangular/
-cosine overlap-add weighting that downweights each window's least-reliable
-edge instead of averaging all overlapping predictions equally, or a smaller
-stride to reduce how much of each window's low-confidence region ends up
-carrying full weight in the final reconstruction).
+**The positional clustering finding stands — it is real, statistically significant, and not an
+artifact of chance — but the specific proposed fix (reweighting the overlap-add) does not close the
+gap, so the underlying mechanism is not as simple as "give less weight to each window's unreliable
+edge."** This is a genuine negative result, reported as such rather than omitted: the four
+correlational lines of evidence (shared error positions between loss functions, significant phase
+clustering, low overlap with No-Processing's own errors, only mild noise elevation) remain valid
+observations about *where* the floor's errors occur, but the tested intervention shows the cause is
+not simply "the reconstruction under-trusts/over-trusts specific window positions in a way a
+different weighting can fix." A plausible remaining explanation — not yet tested — is that the
+degradation is baked into the window predictions *themselves* near their edges (a genuine
+receptive-field/boundary effect inside the Conv1D layers), not just in how those predictions get
+blended afterward, which reweighting cannot fix because it only changes how already-degraded
+predictions are combined, not the predictions themselves. This remains a specific, evidenced,
+partially-open question rather than either a fully solved one or an untested guess: the *where*
+is confirmed; the *why*, and a working fix, are not.

@@ -10,6 +10,19 @@ convergence and automatic stability regardless of input power level.
 See lms_filter.py module docstring for the decision-directed stability
 safeguards (global preamble-reliability gate + local confidence gate, and
 preamble tail-weight averaging) shared by both filters.
+
+`min_norm_power` (added later, see report/findings_lms_nlms_asymmetry.md):
+report/findings_lms_nlms_asymmetry.md found this instantaneous normalization
+inflates NLMS's effective step size during a fading channel's power dips,
+exactly when wrong decisions are most likely -- a destabilizing feedback
+loop LMS's fixed step size cannot have. That was correlational evidence; the
+named falsification test was to floor the normalization denominator and
+check whether the fade-amplification signature and the DD-tracking
+underperformance both disappear. `min_norm_power` (default 0.0, which
+reproduces the ORIGINAL behavior exactly -- every existing experiment in
+this project used this default and is unaffected) implements that test:
+when set positive, the denominator is `eps + max(||x(n)||^2, min_norm_power)`,
+capping how far a fade can inflate the effective step size.
 """
 
 import numpy as np
@@ -41,11 +54,14 @@ class NLMSFilter:
     def denoise(self, clean: np.ndarray, noisy: np.ndarray, training_length: int = 1000,
                 modulation: str = "BPSK", leakage: float = 1e-4,
                 min_confidence: float = 0.3, reliability_threshold: float = 0.1,
-                enable_decision_directed: bool = False):
+                enable_decision_directed: bool = False, min_norm_power: float = 0.0):
         """Denoise a complex signal using NLMS with a preamble + (optional)
         Decision-Directed continuation.
 
-        Same interface as LMSFilter.denoise().
+        Same interface as LMSFilter.denoise(), plus min_norm_power (default
+        0.0 = original, unchanged behavior): floors the instantaneous power
+        used in the step-size normalization, capping the fade-amplification
+        effect documented in report/findings_lms_nlms_asymmetry.md.
         """
         N = len(noisy)
         w = np.zeros(self.num_taps, dtype=np.complex128)
@@ -66,7 +82,8 @@ class NLMSFilter:
             y = np.vdot(w, x)
             d = clean[n]
             e = d - y
-            norm_factor = self.mu / (self.eps + np.real(np.vdot(x, x)))
+            inst_power = max(np.real(np.vdot(x, x)), min_norm_power)
+            norm_factor = self.mu / (self.eps + inst_power)
             w = (1 - self.mu * leakage) * w + norm_factor * np.conj(e) * x
             output[n] = y
             errors[n] = e
@@ -102,7 +119,8 @@ class NLMSFilter:
                 mu_eff = self.mu
             else:
                 mu_eff = 0.0
-            norm_factor = mu_eff / (self.eps + np.real(np.vdot(x, x)))
+            inst_power = max(np.real(np.vdot(x, x)), min_norm_power)
+            norm_factor = mu_eff / (self.eps + inst_power)
             w = (1 - mu_eff * leakage) * w + norm_factor * np.conj(e) * x
 
             output[n] = y

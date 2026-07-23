@@ -19,6 +19,14 @@ baseline): decision-directed continuation defaults OFF
 established safe default -- on a static channel, freezing after the preamble
 matches or beats continued adaptation (Section 3.2), so there is nothing to
 lose by defaulting to the safe choice here too.
+
+Tail-averaging (added later, see report/findings_rls_comparison.md): this
+class originally froze on the raw final preamble iterate, unlike LMS/NLMS's
+Polyak/Ruppert average of the last ~70% of the preamble trajectory. This was
+flagged during a self-critique pass as an unexplained, untested asymmetry --
+tested directly (not just fixed and assumed to help): tail-averaging is now
+applied identically to LMS/NLMS's, and the RLS-vs-LMS/NLMS comparison was
+re-run to measure the actual effect (see the findings file for the result).
 """
 
 import numpy as np
@@ -72,6 +80,15 @@ class RLSFilter:
         else:
             decide = lambda y: (1.0 if y.real > 0 else -1.0) / np.sqrt(2) + 1j * (1.0 if y.imag > 0 else -1.0) / np.sqrt(2)
 
+        training_length = min(training_length, N)
+        # Polyak/Ruppert tail-averaging over the last ~70% of the preamble,
+        # identical convention to LMSFilter/NLMSFilter -- reduces the
+        # single-realization variance of the frozen estimate vs. the raw
+        # final iterate.
+        avg_start = max(self.num_taps, int(training_length - 0.7 * (training_length - self.num_taps)))
+        w_sum = np.zeros(self.num_taps, dtype=np.complex128)
+        w_count = 0
+
         for n in range(self.num_taps, N):
             x = noisy[n : n - self.num_taps : -1]
             y = np.vdot(w, x)  # w^H x
@@ -101,8 +118,19 @@ class RLSFilter:
                 # Update inverse correlation matrix
                 P = (P - np.outer(k, xH_P)) / self.lam
 
+            if n < training_length and n >= avg_start:
+                w_sum += w
+                w_count += 1
+
             output[n] = y
             errors[n] = e
+
+            # Once the preamble ends, switch to the tail-averaged estimate
+            # for every subsequent sample's output (this only affects
+            # reporting/downstream use of w -- the recursion above already
+            # used the raw per-sample w while inside the preamble).
+            if n == training_length - 1 and w_count > 0:
+                w = w_sum / w_count
 
         output[: self.num_taps] = noisy[: self.num_taps]
         self._weights = w

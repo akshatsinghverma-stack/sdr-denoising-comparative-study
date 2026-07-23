@@ -117,6 +117,33 @@ def design_mmse_equalizer(g, peak_idx, noise_var, num_taps=16, delay=None):
     return w, delay
 
 
+def design_zf_equalizer(g, peak_idx, num_taps=16, delay=None, reg=1e-10):
+    """Zero-Forcing (ZF) linear equalizer -- added after a self-critique pass
+    found published equalization-comparison literature (e.g. arXiv:2312.06084,
+    a ZF/LMS/RLS comparative study) treats ZF as a standard baseline that this
+    project was missing entirely (it had MMSE but not ZF).
+
+    ZF inverts the channel completely, ignoring noise -- exactly the same
+    linear system as design_mmse_equalizer with noise_var=0 (`R = autocorr(g)`
+    instead of `autocorr(g) + noise_var*I`). A tiny `reg` (default 1e-10, pure
+    numerical-stability regularization, NOT a noise-modeling choice) is added
+    because R can be poorly conditioned when the equalizer has more taps than
+    the channel's essential support (16 taps vs. this project's 3-tap
+    channel), unlike MMSE where the actual noise variance already regularizes
+    R. Unlike MMSE, ZF does not trade off noise amplification against
+    residual ISI -- it always fully removes ISI, whatever the noise cost --
+    so it is expected to underperform MMSE at low SNR and match it only in
+    the noiseless limit; this is the textbook prediction, tested directly
+    against this project's actual channel rather than assumed.
+
+    Returns
+    -------
+    w : complex ndarray, length num_taps
+    delay : int
+    """
+    return design_mmse_equalizer(g, peak_idx, noise_var=reg, num_taps=num_taps, delay=delay)
+
+
 def apply_mmse_equalizer(y, w, delay):
     """Apply the designed equalizer to a symbol-rate received sequence y.
 
@@ -136,3 +163,9 @@ def apply_mmse_equalizer(y, w, delay):
     out[:num_taps] = y[:num_taps]
     out[N - delay:] = y[N - delay:]
     return out
+
+
+# apply_mmse_equalizer's actual logic is generic to any linear FIR equalizer
+# taps -- this alias documents that design_zf_equalizer's output uses the
+# same application function, not a separate implementation.
+apply_zf_equalizer = apply_mmse_equalizer

@@ -10,7 +10,8 @@ from src.signal_gen import generate_bpsk
 from src.channel import add_multipath, add_awgn
 from src.utils import receiver_frontend, demod_bpsk
 from src.metrics import compute_snr_db, compute_ber_count
-from src.mmse_equalizer import measure_channel_taps, design_mmse_equalizer, apply_mmse_equalizer
+from src.mmse_equalizer import (measure_channel_taps, design_mmse_equalizer, apply_mmse_equalizer,
+                                  design_zf_equalizer, apply_zf_equalizer)
 
 SPS = 4
 MULTIPATH = [1.0, 0.4 + 0.3j, -0.1 + 0.1j]
@@ -47,3 +48,44 @@ def test_mmse_never_worse_than_no_processing(snr):
         f"Genie MMSE ({e_mmse} errors) should never be worse than No-Processing "
         f"({e_noproc} errors) at SNR={snr}dB -- it has perfect channel+noise knowledge."
     )
+
+
+# ============================================================================
+# Zero-Forcing (ZF) equalizer -- added after a self-critique pass found
+# published equalization-comparison literature treats ZF as a standard
+# baseline this project was missing. ZF ignores noise entirely (unlike MMSE),
+# so unconditional "never worse than No-Processing" is NOT asserted here --
+# that is exactly the open question the comparison experiment tests.
+# ============================================================================
+
+def test_zf_recovers_symbols_with_negligible_noise():
+    """With essentially no real noise, ZF (which fully inverts the channel,
+    ignoring noise) must recover symbols almost exactly -- this is ZF's one
+    unconditional guarantee."""
+    tx, bits, h_rrc = generate_bpsk(NUM_SYMBOLS, seed=2, sps=SPS)
+    rx_clean = add_multipath(tx, MULTIPATH)
+    isi_ref = receiver_frontend(rx_clean, h_rrc, sps=SPS)
+    g, peak_idx = measure_channel_taps(h_rrc, MULTIPATH, sps=SPS, num_taps=21)
+
+    noisy = add_awgn(rx_clean, 40.0, seed=99)  # ~negligible noise
+    syms = receiver_frontend(noisy, h_rrc, sps=SPS)
+
+    w, delay = design_zf_equalizer(g, peak_idx, num_taps=TAPS)
+    zf_out = apply_zf_equalizer(syms, w, delay)
+
+    e_zf, n = compute_ber_count(bits, demod_bpsk(zf_out))
+    assert e_zf == 0, f"ZF should recover symbols essentially perfectly at ~40dB SNR, got {e_zf}/{n} errors"
+
+
+def test_zf_converges_to_mmse_as_noise_vanishes():
+    """As the MMSE noise term shrinks to ZF's own numerical-stability
+    regularizer, the two designs must converge to (nearly) the same taps --
+    ZF is mathematically the noise_var->0 limit of MMSE."""
+    tx, bits, h_rrc = generate_bpsk(NUM_SYMBOLS, seed=3, sps=SPS)
+    g, peak_idx = measure_channel_taps(h_rrc, MULTIPATH, sps=SPS, num_taps=21)
+
+    w_zf, delay_zf = design_zf_equalizer(g, peak_idx, num_taps=TAPS)
+    w_mmse_tiny, delay_mmse = design_mmse_equalizer(g, peak_idx, noise_var=1e-10, num_taps=TAPS)
+
+    assert delay_zf == delay_mmse
+    assert np.allclose(w_zf, w_mmse_tiny, atol=1e-6)
