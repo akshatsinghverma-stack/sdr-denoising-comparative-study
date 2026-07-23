@@ -394,7 +394,7 @@ meta_table.alignment = WD_TABLE_ALIGNMENT.CENTER
 meta_rows = [
     ("Scope", "4 case studies + 3 connecting analyses (severity sweep, boundary-aware loss, compute cost)"),
     ("This document", "Self-contained — includes full methodology, results, verification, and conclusions"),
-    ("Verification", "51-test regression suite (CI-enforced) · 5 real bugs found, root-caused, and fixed (Section 4.2, 6.2, 4.9)"),
+    ("Verification", "55-test regression suite (CI-enforced) · 6 real bugs found, root-caused, and fixed (Section 4.2, 6.2, 4.9, 11) · reviewed via an adversarial self-critique pass"),
     ("Source code", "Available on request — see Appendix for the experiment/module file list"),
 ]
 for i, (k, v) in enumerate(meta_rows):
@@ -489,17 +489,19 @@ add_numbered(doc, [
     "yet is paradoxically faster in wall-clock terms on this project's CPU stack — a finding about "
     "implementation efficiency, not algorithmic cost, with a concrete hardware-deployment answer "
     "either way.",
-    "The LMS-vs-NLMS decision-directed asymmetry from Case Study 3 was root-caused, not left as a "
-    "hypothesis: NLMS's instantaneous-power step-size normalization measurably inflates its "
-    "effective step size during channel fades (confirmed in 15/15 engaged trials), while LMS's "
-    "fixed step size does the opposite (16/16 trials) — a real, 100%-consistent mechanism.",
-    "The high-SNR CNN error floor was also root-caused: a window/overlap-add reconstruction "
-    "artifact, confirmed via an 81.1% same-position overlap between loss functions and a "
-    "statistically significant (χ²=168.0, p=3.5×10⁻³⁶) clustering by window phase — ruling out "
-    "\"unfixable noise\" as the primary cause.",
-    "Training the CNN once per case study (rather than across several seeds) was validated, not "
-    "just assumed: training-draw variance is consistently smaller than test-time Monte Carlo "
-    "variance across every condition tested.",
+    "The LMS-vs-NLMS decision-directed asymmetry from Case Study 3 was given strong, consistent "
+    "(though correlational, not interventional) evidence: NLMS's instantaneous-power step-size "
+    "normalization measurably inflates its effective step size during channel fades (in 15/15 "
+    "engaged trials), while LMS's fixed step size does the opposite (16/16 trials).",
+    "The high-SNR CNN error floor was likewise strongly evidenced as a window/overlap-add "
+    "reconstruction artifact — an 81.1% same-position overlap between loss functions and a "
+    "statistically significant (χ²=168.0, p=3.5×10⁻³⁶) clustering by window phase — weighing "
+    "against \"unfixable noise\" as the primary cause, though again without a confirming "
+    "intervention.",
+    "Training the CNN once (rather than across several seeds) showed no evidence of a problem in "
+    "one narrow, tested regime: training-draw variance was smaller than test-time Monte Carlo "
+    "variance in all 4 conditions tested (Case Study 1's CNN only, 2 SNR points) — not yet a "
+    "project-wide validation.",
     "RLS, added as a third classical baseline after fixing a real safety bug (an unguarded "
     "decision-directed default), produced a genuinely nuanced result: worse than LMS/NLMS at "
     "low-to-moderate SNR, but strictly better at high SNR — not the simple \"RLS always wins\" "
@@ -713,10 +715,11 @@ add_para(doc,
     "detail: report/findings_boundary_aware_loss.md."
 )
 add_callout(doc,
-    "Root-caused since: the loss-independent high-SNR floor is the CNN's window/overlap-add "
-    "reconstruction — 81.1% same-position overlap between MSE and Hinge, a statistically significant "
-    "(χ²=168.0, p=3.5×10⁻³⁶) non-uniform clustering by window phase, and only 15.1% overlap with "
-    "No-Processing's own errors (ruling out \"unfixable noise\")."
+    "Strongly evidenced since (correlational, not interventional): the loss-independent high-SNR "
+    "floor is consistent with the CNN's window/overlap-add reconstruction — 81.1% same-position "
+    "overlap between MSE and Hinge, a statistically significant (χ²=168.0, p=3.5×10⁻³⁶) non-uniform "
+    "clustering by window phase, and only 15.1% overlap with No-Processing's own errors (weighing "
+    "against \"unfixable noise\")."
 )
 add_para(doc,
     "Position-level tracking of every floor error (`report/findings_cnn_high_snr_floor.md`) found: "
@@ -728,8 +731,9 @@ add_para(doc,
     "hard-decision — 84.9% of the time the CNN introduces a new error rather than failing on an "
     "already-lost sample; (4) noise magnitude at these positions is only mildly elevated (1.39-1.64x "
     "typical), not the large outlier a \"structurally hard sample\" explanation would predict. Together "
-    "this confirms a genuine, loss-independent, position-dependent reconstruction weak spot, not "
-    "unfixable noise."
+    "this points to a genuine, loss-independent, position-dependent reconstruction weak spot — but no "
+    "counterfactual (changing the overlap-add scheme and confirming the floor shrinks) was run, so "
+    "this is the best-supported explanation given every measurement taken, not a demonstrated cause."
 )
 
 add_heading(doc, "3.8 Follow-Up: Is Training the CNN Once Enough?", level=2)
@@ -739,9 +743,10 @@ add_para(doc,
     "variance contributed by the training draw itself was previously unmeasured."
 )
 add_callout(doc,
-    "5 independently-seeded CNNs, evaluated on identical test data, show training-draw variance is "
-    "consistently smaller than test-time variance across all 4 conditions tested (ratio 0.00-0.32x) — "
-    "this project's practice of training once is justified, not an underestimate of true uncertainty."
+    "In one narrow, tested regime (Case Study 1's CNN, 2 SNR points), 5 independently-seeded CNNs "
+    "evaluated on identical test data show no evidence of training-draw variance dominating "
+    "test-time variance (ratio 0.00-0.32x across all 4 conditions tested) — not yet a project-wide "
+    "validation, and the estimate itself rests on only 4-5 samples per condition."
 )
 add_para(doc,
     "At 15dB, five independently-trained BPSK models produced the exact same mean BER to 6 decimal "
@@ -940,6 +945,20 @@ add_para(doc,
     "because every channel used so far is time-invariant. This section builds a genuinely "
     "time-varying channel (drifting multipath taps, sinusoidal or random-walk models) and tests it."
 )
+add_callout(doc,
+    "Correction (found via a later adversarial self-critique pass): this channel model was "
+    "originally described as drifting slowly enough to \"look static across the 1000-symbol "
+    "preamble.\" That claim was asserted, not measured, and is FALSE for the flat-fading config "
+    "actually used in Section 6.4's headline result — measured directly, it swings by 60.5-90.7% "
+    "of its base tap magnitude within the preamble itself, across the 5 seeds tested."
+)
+add_para(doc,
+    "This does not invalidate Section 6.4's Frozen-vs-DD BER comparison — both methods see the "
+    "identical channel/noise realization in every trial, so their difference is real regardless — "
+    "but it means the channel is continuously time-varying from the start of the signal, not "
+    "static-then-drifting as originally described, and the \"Frozen\" baseline is itself a fit to "
+    "an already-moving channel. Full detail: report/findings_preamble_drift_correction.md."
+)
 
 add_heading(doc, "6.1 Finding 1 — a Fourth Bug: the DD Reliability Gate Is Dead Code at SPS>1", level=2)
 add_para(doc,
@@ -978,15 +997,19 @@ add_callout(doc,
     "originally-documented “~30-40% of trials” almost exactly."
 )
 add_para(doc,
-    "This asymmetry has since been root-caused, not just hypothesized (report/findings_lms_nlms_"
-    "asymmetry.md): an instrumented reimplementation of both filters' update equations — verified to "
-    "reproduce production BER exactly before being trusted — measured the correlation between the "
-    "channel's instantaneous envelope and each method's effective step size across all 31 DD-engaged "
-    "trials. The result splits perfectly by method, zero exceptions: all 16 engaged LMS trials show a "
-    "fade shrinking its update-vector norm (fixed step size × small input = small update); all 15 "
-    "engaged NLMS trials show the opposite — a fade inflating NLMS's effective step size, exactly "
-    "when wrong decisions are most likely. NLMS's update-norm during wrong decisions averages 1.23x "
-    "its own median (correcting harder when wrong); LMS averages 0.46x (gentlest when wrong)."
+    "This asymmetry has since been given strong, consistent evidence — correlational, not "
+    "interventional (report/findings_lms_nlms_asymmetry.md): an instrumented reimplementation of "
+    "both filters' update equations — verified to reproduce production BER exactly before being "
+    "trusted — measured the correlation between the channel's instantaneous envelope and each "
+    "method's effective step size across all 31 DD-engaged trials. The result splits perfectly by "
+    "method, zero exceptions: all 16 engaged LMS trials show a fade shrinking its update-vector norm "
+    "(fixed step size × small input = small update); all 15 engaged NLMS trials show the opposite — "
+    "a fade inflating NLMS's effective step size, exactly when wrong decisions are most likely. "
+    "NLMS's update-norm during wrong decisions averages 1.23x its own median among the 13 trials "
+    "with at least one wrong decision to measure (correcting harder when wrong); LMS averages 0.46x "
+    "(gentlest when wrong). No counterfactual (capping NLMS's normalization and confirming the "
+    "effect disappears) was run, so this is the best-supported explanation given every measurement "
+    "taken, not a demonstrated mechanism in the strict causal sense."
 )
 
 add_heading(doc, "6.4 Conclusion", level=2)
@@ -1172,21 +1195,30 @@ add_numbered(doc, [
     "Compute cost and BER cost do not move together, and both need to be reported — CNN's 106-212x "
     "compute multiplier is invisible in this project's own wall-clock numbers, which would mislead "
     "anyone judging real-hardware feasibility from them alone.",
-    "A named, previously-unverified hypothesis was tested and confirmed with 100% trial-level "
-    "consistency: every one of 16 engaged LMS trials shows a fade shrinking its update-vector norm, "
-    "and every one of 15 engaged NLMS trials shows the opposite — a fade inflating NLMS's effective "
-    "step size, exactly when wrong decisions are most likely.",
-    "The same discipline resolved a second previously-open question: the high-SNR CNN error floor "
-    "was confirmed (χ²=168.0, p=3.5×10⁻³⁶) as a window/overlap-add reconstruction artifact, ruling "
-    "out the competing \"unfixable noise\" hypothesis.",
-    "This project's single-training-draw practice was quantitatively validated, not just assumed: "
+    "A named, previously-unverified hypothesis was tested and found strongly, consistently "
+    "evidenced — correlationally, not interventionally: every one of 16 engaged LMS trials shows a "
+    "fade shrinking its update-vector norm, and every one of 15 engaged NLMS trials shows the "
+    "opposite — a fade inflating NLMS's effective step size, exactly when wrong decisions are most "
+    "likely. The actual falsification test (capping NLMS's normalization and confirming the effect "
+    "disappears) remains the next step, not yet performed.",
+    "The same discipline made progress on a second previously-open question, with the same caveat: "
+    "the high-SNR CNN error floor was found strongly consistent (χ²=168.0, p=3.5×10⁻³⁶) with a "
+    "window/overlap-add reconstruction artifact, weighing against the competing \"unfixable noise\" "
+    "hypothesis — again correlational evidence, pending an interventional test.",
+    "This project's single-training-draw practice was given a first quantitative check, in one "
+    "narrow regime, not validated project-wide: "
     "training-draw variance is consistently smaller than test-time Monte Carlo variance across all "
-    "4 conditions tested (ratio 0.00-0.32x).",
+    "4 conditions tested (ratio 0.00-0.32x), for Case Study 1's CNN only.",
     "RLS, added as a third classical baseline, required fixing a real safety bug before its first "
     "use (an unguarded decision-directed default, the same broken-gate pattern already fixed for "
     "LMS/NLMS) and then produced a genuinely nuanced result: measurably worse than LMS/NLMS at "
     "low-to-moderate SNR but strictly better at high SNR — an algorithm's textbook advantage "
     "doesn't automatically transfer without the same hardening applied elsewhere in this project.",
+    "A deliberate adversarial self-critique pass (four independent reviewer agents, each briefed to "
+    "find real problems) surfaced a sixth bug (an asymmetric RRC filter, src/signal_gen.py), a "
+    "genuine reporting error in this project's own diagnostic (undefined-ratio denominators counted "
+    "as \"not inflated\"), an uncorrected-multiple-comparisons gap in Section 4.5, and the preamble-"
+    "drift correction above — all fixed or explicitly caveated rather than left unaddressed.",
 ])
 
 doc.add_page_break()
@@ -1208,8 +1240,24 @@ add_bullets(doc, [
     "The decision-directed reliability gate is dead code for any SPS>1 signal — affects every "
     "experiment using pulse shaping, all of which use the (unaffected-in-practice) default "
     "enable_decision_directed=False.",
-    "The boundary-aware-loss and 16-QAM follow-ups were run at reduced scale for speed — treat "
-    "their exact numbers as indicative, at the same standard as the severity sweep.",
+    "The boundary-aware-loss, training-variance, 16-QAM, LMS-vs-NLMS-asymmetry, and CNN-high-SNR-"
+    "floor follow-ups were all run at reduced scale (4,000-30,000 symbols, 4-5 MC trials, sometimes "
+    "only 5 independent draws) for speed — treat their percentages, ratios, and correlation "
+    "coefficients as indicative at that reduced-confidence standard, not full precision.",
+    "A sixth real bug (found via an adversarial self-critique pass): rrc_filter centered its time "
+    "axis on N/2 rather than (N-1)/2, making the transmit/receive filter measurably asymmetric. "
+    "Fixed and verified symmetric; NOT re-run across every RRC-based experiment in this project — "
+    "the effect on final BER/SNR numbers is expected to be small (energy normalization is preserved "
+    "regardless of symmetry; round-trip demod showed 0 errors before and after), but a full re-run "
+    "to confirm this quantitatively is named future work, not assumed.",
+    "The \"channel looks static during the preamble\" premise for Case Study 3 was asserted, not "
+    "measured, and found false for the actual default parameters (Section 6.1) — this does not "
+    "invalidate Section 6.4's Frozen-vs-DD comparison, but changes the causal story for why DD helps.",
+    "Section 4.5's Fisher's-exact \"statistically real\" claims (9 tests) were not corrected for "
+    "multiple comparisons — a Bonferroni correction would flip 2 of the reported p-values from "
+    "significant to non-significant; the qualitative conclusion (a small, practically-negligible "
+    "floor) is unaffected either way, but the language should be read as nominal, not family-wise-"
+    "corrected.",
 ])
 
 add_heading(doc, "Named, Scoped-Out Future Work", level=2)
@@ -1243,7 +1291,7 @@ doc.add_page_break()
 # Appendix
 # ===========================================================================
 add_heading(doc, "Appendix: Project Structure & Regression Test Suite", level=1)
-add_para(doc, "A CI-enforced, ~51-test regression suite (tests/, ~25s to run, run automatically on "
+add_para(doc, "A CI-enforced, 55-test regression suite (tests/, ~30s to run, run automatically on "
     "every push via GitHub Actions) codifies every invariant discovered during this project:")
 add_bullets(doc, [
     "test_lms_stability.py — LMS/NLMS never diverge below No-Processing; DD mode off by default.",
@@ -1252,7 +1300,9 @@ add_bullets(doc, [
     "test_receiver_frontend.py — matched filter recovers unit gain; No-Processing's SNR matches "
     "nominal (the identity that caught two of the three Case Study 2 bugs).",
     "test_channel.py — add_multipath is a true identity and causal (the identity that caught the "
-    "third bug).",
+    "third bug); add_time_varying_multipath is causal, matches the static channel at zero drift, "
+    "and correctly fixes the direct path unless vary_direct_path=True (added during the "
+    "self-critique pass — previously zero coverage on this function).",
     "test_mmse_equalizer.py — genie MMSE never loses to No-Processing.",
     "test_no_leakage.py — no train/test bit-sequence collisions.",
     "test_metrics.py — BER/error-count consistency, rule-of-three sanity.",

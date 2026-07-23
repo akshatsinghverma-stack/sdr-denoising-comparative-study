@@ -171,13 +171,27 @@ sdr_denoising_project/
    efficiency artifact, not an algorithmic one; the analytical MAC gap
    reasserts itself as a genuine microcontroller-vs-applications-processor
    deployment question.
-7. **Five real bugs were found and fixed** during this project (LMS
+7. **Six real bugs were found and fixed** during this project (LMS
    step-size/divergence, a receiver matched-filter gain bug, an SNR
-   calibration bug, a multipath-convolution causality bug, and a
+   calibration bug, a multipath-convolution causality bug, a
    decision-directed reliability gate that was silently dead code at
-   SPS>1), every one caught by checking a value against what it must equal
-   by definition. A ~50-test regression suite (`tests/`), run automatically
-   on every push via GitHub Actions, now codifies all of them.
+   SPS>1, and — found via a deliberate adversarial self-critique pass late
+   in the project — an asymmetric RRC pulse-shaping filter), every one
+   caught by checking a value against what it must equal by definition. A
+   55-test regression suite (`tests/`), run automatically on every push via
+   GitHub Actions, now codifies all of them.
+8. **A four-agent adversarial self-critique pass** (statistical rigor, DSP
+   correctness, code quality, and a skeptical outside reader, each briefed
+   independently) surfaced and led to fixes for: the RRC filter bug above,
+   a genuine reporting error in this project's own LMS-vs-NLMS diagnostic
+   (undefined ratios were being counted as "not inflated"), several
+   "confirmed"/"root-caused" claims that were correlational rather than
+   interventional evidence and have been reworded accordingly, an
+   uncorrected-multiple-comparisons gap in Case Study 2's significance
+   testing, and a channel-model design claim ("looks static during the
+   preamble") that was asserted but never measured and turned out to be
+   false for the actual parameters used (see
+   `report/findings_preamble_drift_correction.md`).
 
 See `report/report.md` for the full mechanism and verification behind each
 finding, and the `report/findings_*.md` files for the deep-dive write-up

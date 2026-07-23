@@ -47,32 +47,35 @@ like-for-like).
 | Mean correlation: envelope vs. update-vector norm | +0.217 | **-0.480** |
 | Mean inflation ratio (wrong-decision update norm / own median) | 0.455 | **1.228** |
 | Trials with negative envelope-vs-update-norm correlation | 0 / 16 | **15 / 15** |
-| Trials with inflation ratio > 1 | 0 / 16 | 8 / 15 |
+| Trials with inflation ratio > 1 (among trials with a defined ratio) | 0 / 13 | 8 / 13 |
 
 **Every single engaged trial, with no exceptions, splits perfectly along method lines.** All 15
 NLMS trials show a negative correlation between channel envelope and update-vector norm — a fade
 measurably inflates NLMS's actual weight update, in every trial tested. All 16 LMS trials show the
 opposite (positive) correlation — a fade measurably shrinks LMS's update, in every trial tested.
-The inflation ratio confirms the consequence: NLMS's updates during wrong decisions average 1.23x
-its own typical (median) update size — it corrects itself *harder* exactly when it is wrong — while
-LMS's updates during wrong decisions average only 0.46x its typical size (LMS is gentlest exactly
-when it is wrong, since a wrong decision is disproportionately likely during a fade, where `x(n)`
-is already small). LMS never once (0/16) showed an above-median update during a wrong decision;
-NLMS did in just over half its trials (8/15) — concentrated, on inspection, in exactly the
-higher-BER trials where the divergence documented in Section 6.4 is largest.
+(This sign-consistency result does not depend on wrong decisions existing, so all 16/15 engaged
+trials contribute to it.) The inflation ratio confirms the consequence: NLMS's updates during wrong
+decisions average 1.23x its own typical (median) update size — it corrects itself *harder* exactly
+when it is wrong — while LMS's updates during wrong decisions average only 0.46x its typical size
+(LMS is gentlest exactly when it is wrong, since a wrong decision is disproportionately likely
+during a fade, where `x(n)` is already small). This ratio is only defined for trials with at least
+one wrong decision during DD (3 LMS and 2 NLMS trials — all at 15dB, where BER was 0 — had none, so
+are excluded rather than counted as "not inflated"). **Among the 13 trials per method where the
+ratio is defined**, LMS never once (0/13) showed an above-median update during a wrong decision;
+NLMS did in 8/13 (62%) — concentrated, on inspection, in exactly the higher-BER trials where the
+divergence documented in Section 6.4 is largest.
 
 ## Conclusion
 
-**The hypothesis is confirmed, not merely plausible.** NLMS's instantaneous-power normalization is
-a real, measurable, 100%-consistent mechanism: a channel fade shrinks the input power in the
-denominator of NLMS's step-size formula, inflating the effective step size at precisely the moment
-decisions are least reliable, so a wrong decision gets amplified into an oversized, badly-directed
-correction — a destabilizing feedback loop. LMS's fixed step size cannot have this failure mode by
-construction: a small `x(n)` during a fade produces a small update whether or not the decision was
-correct, which is passively protective rather than actively corrective. This explains, mechanistically
-rather than by analogy, why decision-directed tracking is a net win for LMS but not for NLMS on
-this project's time-varying channel, and suggests a concrete, testable fix for future work: a
-NLMS variant that floors or caps the normalization denominator (or gates adaptation on a smoothed,
-rather than instantaneous, power estimate) would be expected to recover NLMS's usual convergence-speed
-advantage over LMS without inheriting this fade-amplification failure mode — not attempted here, to
-keep this diagnostic scoped to explaining the observed asymmetry rather than re-opening filter design.
+**The hypothesis is strongly and consistently evidenced — a correlational result, not an
+interventional one, and should be read accordingly.** Every engaged trial's sign of the
+envelope-vs-update-norm correlation splits perfectly by method (16/16 LMS positive, 15/15 NLMS
+negative), and the inflation-ratio result points the same direction. This is a much stronger basis
+than a single plausible-sounding mechanism, but no counterfactual was run: the natural falsification
+test — capping or flooring NLMS's normalization denominator (or gating adaptation on a smoothed
+rather than instantaneous power estimate) and confirming the fade-amplification signature disappears
+while NLMS's usual convergence-speed advantage returns — was not attempted here. Until that
+intervention is run, "NLMS's instantaneous normalization causes the asymmetry" is the best-supported
+explanation consistent with every measurement taken, not a demonstrated causal mechanism in the
+strict sense. That intervention is the concrete next step, named rather than left as a vague
+"future work" placeholder.

@@ -38,14 +38,16 @@ variance in any condition tested.
 
 ## Conclusion
 
-**This project's practice of training the CNN once per modulation per case study, and reporting
-only test-time Monte Carlo variance, is justified — not an underestimate of true uncertainty.**
-The training process (weight initialization, data shuffle order) is a substantially smaller
-source of BER variation than ordinary test-time noise/bit-sequence randomness, for this
-architecture and training procedure. This is also consistent with, and reinforces, the separate
-high-SNR-floor finding (`report/findings_cnn_high_snr_floor.md`): at 15dB, independently-trained
-models converge to nearly identical behavior, consistent with that floor being a structural
-property of the window/overlap-add reconstruction architecture rather than something training
-randomness could shift. This does not extend the finding to Hybrid or to Case Study 2's ISI
-channel (out of scope for this diagnostic's reduced runtime budget), which remain untested for
-training-draw variance specifically.
+**In this specific, narrow regime — Case Study 1's memoryless-AWGN CNN, 2 SNR points, 15,000
+symbols — training-draw variance did not dominate test-time variance in any of the 4 conditions
+tested.** This is evidence *against* training-draw variance being the larger contributor here, not
+a general validation of the project-wide practice: the estimate rests on only 5 training draws and
+4 test trials per draw, too few to put a reliable confidence interval on the ratio itself (a
+standard deviation from n=4-5 samples has large sampling error), and the finding has not been
+checked for Hybrid, for Case Study 2's ISI channel, or at low SNR levels beyond 0dB. The BPSK-15dB
+result (five independently-trained models producing *identical* mean BER to 6 decimal places) is
+consistent with, and plausibly connects to, the separate high-SNR-floor finding
+(`report/findings_cnn_high_snr_floor.md`) — a structural, architecture-driven floor would be
+expected to produce exactly this kind of training-seed-independent behavior — but that connection
+is suggestive, not established. **Read this as "no evidence of a problem in one tested regime,"
+not as "the practice is validated across this project."**

@@ -26,7 +26,7 @@ def add_multipath(signal: np.ndarray, h: list[complex] | np.ndarray = None) -> n
     used (not just edge cases), including the one used throughout the
     originally-reported Case Study 2 results.
     """
-    if h is None or len(h) <= 1 and h[0] == 1.0:
+    if h is None or len(h) == 0 or (len(h) == 1 and h[0] == 1.0):
         return signal
     return np.convolve(signal, h, mode="full")[: len(signal)]
 
@@ -102,17 +102,20 @@ def add_time_varying_multipath(signal: np.ndarray, h_base: list[complex] | np.nd
       standard way to synthesize a slow-fading tap trajectory without an
       unbounded random walk.
 
-    Rate-of-drift design note (why this counts as "slow"): the frozen-after-
-    preamble design (see report Section 3.2) assumes the channel is static
-    across the 1000-symbol preamble AND across the remainder of the signal it
-    is applied to. This function's default (`n_cycles=1.5` sinusoidal over a
-    typical 20,000-30,000 symbol test signal, or `coherence_symbols=4000` for
-    the random-walk mode) gives a channel that changes negligibly within any
-    single 1000-symbol window (looks static to the preamble, exactly like the
-    old assumption) but has drifted substantially by the time thousands of
-    symbols have elapsed (giving decision-directed tracking an actual,
-    plausible job to do) -- explicitly NOT fast enough to require symbol-by-
-    symbol tracking that no equalizer could keep up with anyway.
+    Rate-of-drift design note, CORRECTED after a later self-audit (see
+    report/findings_preamble_drift_correction.md): this docstring originally
+    claimed the default parameters make the channel "look static" across the
+    1000-symbol preamble. That claim was never actually measured and is
+    FALSE for the random_walk config used in Case Study 3's main flat-fading
+    control (coherence_symbols=4000, drift_depth=0.4, sps=1): the single tap's
+    magnitude was measured (via a constant-input probe through the real
+    function) to swing by 60-91% of its base value *within the first 1000
+    samples alone*, across 5 tested seeds. The sinusoidal mode's non-direct
+    taps also drift by up to +-22% within a 4000-sample (SPS=4) preamble
+    window, not "negligibly." Neither mode gives the near-static preamble
+    this function's docstring and report.md Section 6.1 originally described
+    -- see the findings file above for what this does and does not change
+    about Case Study 3's conclusions.
 
     Parameters
     ----------

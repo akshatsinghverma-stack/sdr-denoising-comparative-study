@@ -38,15 +38,25 @@ def receiver_frontend(rx_sig, h_rrc, sps=4):
     return symbols
 
 def bits_to_symbols(bits, modulation="BPSK"):
-    """Regenerate ideal symbols from bits."""
+    """Regenerate ideal symbols from bits.
+
+    Only BPSK and QPSK are implemented -- previously any other value (a typo,
+    or "16QAM"/"8PSK") silently fell through to the QPSK formula instead of
+    raising, a latent mismap caught during a self-critique pass (no current
+    caller actually passes an unsupported value, so this was never triggered
+    in practice, but the silent fallback was a real trap for future callers).
+    """
     if modulation == "BPSK":
         return (2.0 * bits - 1.0).astype(np.complex128)
-    else:
+    elif modulation == "QPSK":
         b0 = bits[0::2]
         b1 = bits[1::2]
         gray_index = b0 * 2 + (b0 ^ b1)
         phase = (2 * gray_index + 1) * np.pi / 4.0
         return np.cos(phase) + 1j * np.sin(phase)
+    else:
+        raise ValueError(f"bits_to_symbols: unsupported modulation {modulation!r} "
+                          f"(only 'BPSK' and 'QPSK' are implemented)")
 
 # ============================================================================
 # Constellation demapping

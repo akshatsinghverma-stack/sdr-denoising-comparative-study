@@ -70,18 +70,22 @@ ratios (3-5x+) a genuine noise-tail explanation would predict.
 
 ## Conclusion
 
-**The window/overlap-add reconstruction artifact (hypothesis 1) is the
-confirmed dominant cause; the "structurally hard sample" explanation
-(hypothesis 2) is not supported as the primary driver.** All four lines of
-evidence point the same direction: the two loss functions fail at the same
-positions (shared architectural cause), those positions have a highly
-significant, non-uniform phase pattern within the window-overlap cycle (a
-positional signature, not a noise-magnitude signature), the raw signal was
-usually already fine there (ruling out "unfixable" noise), and the noise
-present is only mildly, not extremely, elevated. This turns the report's
-"not root-caused, two guesses offered" status into a specific, evidenced
-mechanism: the CNN's window-based inference has a genuine, loss-independent,
-statistically confirmed reconstruction weak spot tied to position within its
+**The window/overlap-add reconstruction artifact (hypothesis 1) is strongly and consistently
+evidenced as the dominant cause; the "structurally hard sample" explanation (hypothesis 2) is not
+supported as the primary driver — but this is observational, not interventional, evidence, and
+should be described accordingly.** All four lines of evidence point the same direction: the two
+loss functions fail at the same positions (shared architectural cause), those positions have a
+highly significant, non-uniform phase pattern within the window-overlap cycle (a positional
+signature, not a noise-magnitude signature), the raw signal was usually already fine there (ruling
+out "unfixable" noise), and the noise present is only mildly, not extremely, elevated. This is much
+stronger than a single plausible-sounding hypothesis, but no counterfactual was run — changing the
+overlap-add scheme (a triangular/cosine weighting, or a smaller stride) and confirming the floor
+specifically shrinks in the predicted way was not attempted here, only proposed. Until that
+intervention is run, this remains the best-supported explanation consistent with every measurement
+taken, not a demonstrated causal mechanism in the strict sense. This turns the report's
+"not root-caused, two guesses offered" status into a specific, evidenced (though not yet
+interventionally confirmed) mechanism: the CNN's window-based inference has a genuine,
+loss-independent reconstruction weak spot tied to position within its
 own 128-sample window, most concentrated toward one side of the overlap
 cycle — a concrete, testable target for future work (e.g., a triangular/
 cosine overlap-add weighting that downweights each window's least-reliable

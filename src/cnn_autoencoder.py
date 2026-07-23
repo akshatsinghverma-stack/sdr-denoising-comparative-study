@@ -4,10 +4,14 @@
 A small Conv1D encoder-decoder that learns to map noisy IQ windows to
 clean IQ windows.  Designed for fast CPU training (< 10 min).
 
-Architecture
+Architecture (corrected -- this previously described a Conv1DTranspose
+decoder the code has never actually built; verify docstrings against the
+real layer calls, not just at review time):
 ------------
 Encoder:  Conv1D(32,7) -> Conv1D(16,5) -> Conv1D(8,3)
-Decoder:  Conv1DTranspose(16,3) -> Conv1DTranspose(32,5) -> Conv1D(2,7)
+Decoder:  Conv1D(16,3) -> Conv1D(32,5) -> Conv1D(2,7)   -- all plain Conv1D
+with 'same' padding, not Conv1DTranspose; there is no explicit upsampling
+step because no layer here changes the sequence length.
 
 All layers use 'same' padding so the output length equals input length,
 avoiding the need for cropping / padding logic.
@@ -87,7 +91,9 @@ def reconstruct_from_windows(windows: np.ndarray, original_len: int,
 def build_autoencoder(window_len: int = 128, num_channels: int = 2):
     """Build the 1-D CNN denoising autoencoder.
 
-    Small architecture (≈ 15 k parameters) for fast CPU training.
+    Small architecture (6,890 parameters, verified via model.count_params() --
+    see report.md Section 8; an earlier "~15k" estimate here was never
+    checked against the actual built model) for fast CPU training.
     """
     inp = keras.Input(shape=(window_len, num_channels), name="noisy_input")
 

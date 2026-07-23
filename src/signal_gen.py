@@ -8,9 +8,20 @@ import numpy as np
 from scipy.signal import upfirdn
 
 def rrc_filter(N: int, alpha: float, Ts: float, Fs: float) -> np.ndarray:
-    """Generates a root raised cosine (RRC) filter (FIR)."""
+    """Generates a root raised cosine (RRC) filter (FIR).
+
+    N is always odd in this project (apply_pulse_shaping's filter_span*sps+1),
+    so the true center sample is index (N-1)/2, not N/2 -- using N/2 (a
+    non-integer for odd N, e.g. 12.5 for N=25) put the continuous-time t=0
+    point between two samples instead of on the center sample, making the
+    filter measurably asymmetric (verified: up to ~0.4 peak-scale difference
+    between h and its reverse before this fix) even though its single
+    highest-magnitude sample still landed at the expected center index.
+    Fixed to align with apply_pulse_shaping's delay=(N-1)//2 convention,
+    which assumes an exactly symmetric, linear-phase filter.
+    """
     T_delta = 1.0 / Fs
-    t = (np.arange(N) - N / 2) * T_delta
+    t = (np.arange(N) - (N - 1) / 2) * T_delta
     
     h_rrc = np.zeros(N, dtype=float)
     for i in range(N):
