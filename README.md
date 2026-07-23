@@ -1,5 +1,7 @@
 # SDR Denoising Project
 
+[![tests](https://github.com/akshatsinghverma-stack/sdr-denoising-comparative-study/actions/workflows/tests.yml/badge.svg)](https://github.com/akshatsinghverma-stack/sdr-denoising-comparative-study/actions/workflows/tests.yml)
+
 **Comparative Study of Classical Adaptive Filtering and Deep Learning Based
 Denoising Techniques for SDR Communication Signals**
 

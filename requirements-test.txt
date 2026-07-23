@@ -1,0 +1,9 @@
+# Dependencies needed to run tests/ (excludes tensorflow — no test imports
+# the CNN/Hybrid modules, so CI stays fast and doesn't depend on TF's
+# platform-specific install behavior). Full project deps: requirements.txt.
+numpy>=1.23
+scipy>=1.9
+matplotlib>=3.6
+scikit-learn>=1.1
+pandas>=1.5
+pytest>=7.0
