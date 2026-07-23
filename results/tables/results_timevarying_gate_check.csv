@@ -1,0 +1,5 @@
+modulation,channel_mode,default_gate_engagement_rate
+BPSK,sinusoidal,0.0
+BPSK,random_walk,0.0
+QPSK,sinusoidal,0.0
+QPSK,random_walk,0.0

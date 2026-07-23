@@ -1,0 +1,6 @@
+method,taps_or_params,macs_per_sample_window_norm,macs_per_sample_stride_norm,case1_latency_ns_per_sample_measured,case2_latency_ns_per_sample_measured,relative_macs_vs_lms
+LMS,16,64.0,64.0,3818.1,3678.8,1.0
+NLMS,16,64.0,64.0,5254.9,5309.0,1.0
+MMSE (Genie),16,64.0,64.0,,1166.2,1.0
+CNN,6890,6784.0,13568.0,2222.5,1486.9,106.0
+Hybrid,6906,6848.0,13632.0,5544.2,5162.1,107.0
