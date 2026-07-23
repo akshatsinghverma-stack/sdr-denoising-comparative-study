@@ -90,7 +90,7 @@ sdr_denoising_project/
 │   ├── diagnose_cnn_high_snr_floor.py  # Root-causes the loss-independent high-SNR CNN floor
 │   ├── diagnose_training_variance.py   # Test-time vs. training-draw BER variance
 │   └── run_all.py                      # Alias of run_case1_no_isi.py
-├── tests/                        # Regression test suite (~50 tests, ~25s) -- see below
+├── tests/                        # Regression test suite (58 tests, ~30s) -- see below
 ├── results/
 │   ├── figures/                  # One subdirectory per case study/analysis
 │   └── tables/                   # One or more CSVs per case study/analysis
@@ -178,7 +178,7 @@ sdr_denoising_project/
    SPS>1, and — found via a deliberate adversarial self-critique pass late
    in the project — an asymmetric RRC pulse-shaping filter), every one
    caught by checking a value against what it must equal by definition. A
-   57-test regression suite (`tests/`), run automatically on every push via
+   58-test regression suite (`tests/`), run automatically on every push via
    GitHub Actions, now codifies all of them.
 8. **A four-agent adversarial self-critique pass** (statistical rigor, DSP
    correctness, code quality, and a skeptical outside reader, each briefed

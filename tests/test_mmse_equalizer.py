@@ -78,14 +78,30 @@ def test_zf_recovers_symbols_with_negligible_noise():
 
 
 def test_zf_converges_to_mmse_as_noise_vanishes():
-    """As the MMSE noise term shrinks to ZF's own numerical-stability
-    regularizer, the two designs must converge to (nearly) the same taps --
-    ZF is mathematically the noise_var->0 limit of MMSE."""
+    """As MMSE's noise_var shrinks toward zero, its solution must converge
+    monotonically toward ZF's -- ZF is mathematically the noise_var->0 limit
+    of MMSE. This compares design_zf_equalizer() against design_mmse_
+    equalizer() at GENUINELY DIFFERENT, independently-chosen noise_var values
+    (1e-4, 1e-6, 1e-8) rather than reusing ZF's own reg=1e-10 as the MMSE
+    noise_var (which would make the two calls identical by construction and
+    prove nothing about the claimed limiting behavior)."""
     tx, bits, h_rrc = generate_bpsk(NUM_SYMBOLS, seed=3, sps=SPS)
     g, peak_idx = measure_channel_taps(h_rrc, MULTIPATH, sps=SPS, num_taps=21)
 
     w_zf, delay_zf = design_zf_equalizer(g, peak_idx, num_taps=TAPS)
-    w_mmse_tiny, delay_mmse = design_mmse_equalizer(g, peak_idx, noise_var=1e-10, num_taps=TAPS)
 
-    assert delay_zf == delay_mmse
-    assert np.allclose(w_zf, w_mmse_tiny, atol=1e-6)
+    prev_dist = None
+    for noise_var in [1e-4, 1e-6, 1e-8]:
+        w_mmse, delay_mmse = design_mmse_equalizer(g, peak_idx, noise_var=noise_var, num_taps=TAPS)
+        assert delay_zf == delay_mmse
+        dist = np.linalg.norm(w_zf - w_mmse)
+        if prev_dist is not None:
+            assert dist < prev_dist, (
+                f"MMSE should move monotonically closer to ZF as noise_var shrinks: "
+                f"distance at noise_var={noise_var} ({dist:.2e}) should be less than the "
+                f"previous, larger noise_var's distance ({prev_dist:.2e})"
+            )
+        prev_dist = dist
+    # At noise_var=1e-8 (four orders of magnitude below ZF's own 1e-10 regularizer),
+    # MMSE and ZF should already agree closely.
+    assert prev_dist < 1e-3

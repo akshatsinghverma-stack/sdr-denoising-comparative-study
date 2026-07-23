@@ -83,3 +83,54 @@ def test_rls_frozen_matches_explicit_false():
                                             modulation="BPSK", enable_decision_directed=False)
 
     assert np.allclose(out_default, out_explicit)
+
+
+def test_rls_frozen_weights_equal_tail_average_not_final_iterate():
+    """Directly tests the tail-averaging logic itself (report/findings_rls_
+    comparison.md), rather than only indirectly via an SNR-tolerance check
+    loose enough to pass even with broken averaging. Reimplements the
+    preamble recursion independently (same equations as src/rls_filter.py,
+    written separately here rather than imported, so this test doesn't just
+    re-run the production code against itself) to compute the expected
+    tail-averaged weight vector, and confirms RLSFilter._weights matches it
+    -- and does NOT match the raw final iterate, proving averaging actually
+    happened rather than being silently skipped."""
+    tx, bits, h_rrc = generate_bpsk(5000, seed=7, sps=1)
+    noisy = add_awgn(tx, 5.0, seed=7)
+
+    rls = RLSFilter(num_taps=TAPS, lam=RLS_LAMBDA)
+    rls.denoise(tx, noisy, training_length=TRAINING_LENGTH, modulation="BPSK")
+
+    # Independent reimplementation of the preamble recursion.
+    w = np.zeros(TAPS, dtype=np.complex128)
+    P = np.eye(TAPS, dtype=np.complex128) / 1.0
+    avg_start = max(TAPS, int(TRAINING_LENGTH - 0.7 * (TRAINING_LENGTH - TAPS)))
+    w_sum = np.zeros(TAPS, dtype=np.complex128)
+    w_count = 0
+    final_iterate = None
+    for n in range(TAPS, TRAINING_LENGTH):
+        x = noisy[n: n - TAPS: -1]
+        y = np.vdot(w, x)
+        e = tx[n] - y
+        Px = P @ x
+        xH_P = np.conj(x).T @ P
+        denom = RLS_LAMBDA + np.vdot(x, Px)
+        k = Px / denom
+        w = w + k * np.conj(e)
+        P = (P - np.outer(k, xH_P)) / RLS_LAMBDA
+        if n >= avg_start:
+            w_sum += w
+            w_count += 1
+        final_iterate = w.copy()
+
+    expected_tail_average = w_sum / w_count
+    assert np.allclose(rls._weights, expected_tail_average, atol=1e-9), (
+        "RLSFilter's frozen weights should equal the tail-average of the preamble "
+        "trajectory, matching LMSFilter/NLMSFilter's own Polyak/Ruppert-averaging convention."
+    )
+    # And confirm averaging actually changed something -- if it silently no-op'd,
+    # the frozen weights would equal the raw final iterate instead.
+    assert not np.allclose(rls._weights, final_iterate, atol=1e-9), (
+        "Tail-averaging should differ from the raw final iterate for a real, "
+        "still-converging preamble -- if these match, averaging is not being applied."
+    )

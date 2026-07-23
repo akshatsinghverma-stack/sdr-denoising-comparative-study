@@ -68,15 +68,33 @@ at high SNR.**
 | QPSK 15/20 | 0 | 0 | — | ∞ | ∞ |
 
 (All figures are raw error counts out of 1,000,000 bits for BPSK / 2,000,000 for QPSK, 10 Monte
-Carlo trials at 100,000 symbols each — differences of this size, e.g. 198→81 or 8093→4371, are far
-beyond any plausible trial-to-trial noise at this scale, not a marginal or ambiguous result.)
+Carlo trials at 100,000 symbols each.)
+
+**A finding this size deserved the same formal significance test Section 4.5 applies to LMS/NLMS/
+Hybrid regressions, not an eyeballed "far beyond plausible noise" claim — so it was run.** Fisher's
+exact test, RLS-before vs. RLS-after, every SNR level, both modulations:
+
+| SNR (dB) | BPSK p-value | QPSK p-value |
+|---|---|---|
+| -10 | <1e-300 | <1e-300 |
+| -5 | <1e-300 | <1e-300 |
+| 0 | <1e-300 | <1e-300 |
+| 5 | <1e-300 | <1e-300 |
+| 10 | 1.8×10⁻¹² | 4.8×10⁻²⁴⁸ |
+
+Every cell is significant by an overwhelming margin — this is not a borderline or ambiguous result.
+The same test comparing RLS(after) against LMS(after) and NLMS(after) directly confirms RLS's
+advantage at every SNR from -10 to 10dB (p ranging from 8×10⁻³ down to 0, worst case p=7.97×10⁻³ at
+BPSK -10dB vs. LMS) and is consistent with a tie at 15-20dB where error counts are already at or
+near zero (e.g. BPSK 20dB: RLS 0 vs. NLMS 4 errors out of 1,000,000, p=0.125 — not statistically
+distinguishable at this count, reported honestly rather than claimed as a RLS win it cannot support).
 
 **LMS/RLS(after) and NLMS/RLS(after) are ≥1.0 at every SNR level** — RLS with tail-averaging is
-never worse than LMS/NLMS anywhere in the tested range, and is a clear, growing winner from 5dB
-upward. The improvement itself grows with SNR (1.10-1.20x at low SNR, up to 2.44-3.79x at 10dB)
-because tail-averaging's benefit is specifically variance reduction, and variance matters most when
-the residual training noise is a larger fraction of the total error budget — exactly the regime
-Section 3.2 documented for LMS/NLMS's own tail-averaging benefit.
+never worse than LMS/NLMS anywhere in the tested range, and is a clear, statistically confirmed
+winner from 5dB upward. The improvement itself grows with SNR (1.10-1.20x at low SNR, up to
+2.44-3.79x at 10dB) because tail-averaging's benefit is specifically variance reduction, and
+variance matters most when the residual training noise is a larger fraction of the total error
+budget — exactly the regime Section 3.2 documented for LMS/NLMS's own tail-averaging benefit.
 
 ## Why the earlier "zero effect" claim was wrong, as a process lesson
 

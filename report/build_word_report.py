@@ -394,7 +394,7 @@ meta_table.alignment = WD_TABLE_ALIGNMENT.CENTER
 meta_rows = [
     ("Scope", "4 case studies + 3 connecting analyses (severity sweep, boundary-aware loss, compute cost)"),
     ("This document", "Self-contained — includes full methodology, results, verification, and conclusions"),
-    ("Verification", "57-test regression suite (CI-enforced) · 6 real bugs found, root-caused, and fixed (Section 4.2, 6.2, 4.9, 11) · reviewed via an adversarial self-critique pass"),
+    ("Verification", "58-test regression suite (CI-enforced) · 6 real bugs found, root-caused, and fixed (Section 4.2, 6.2, 4.9, 11) · reviewed via an adversarial self-critique pass"),
     ("Source code", "Available on request — see Appendix for the experiment/module file list"),
 ]
 for i, (k, v) in enumerate(meta_rows):
@@ -435,8 +435,10 @@ add_para(doc,
     "central finding is that improved output SNR does not imply improved bit-error-rate (BER): on a "
     "memoryless channel, every method tested is strictly worse than doing nothing (56/56 "
     "comparisons), because the raw received sample is already a sufficient statistic for detection; "
-    "once real channel memory exists, the same methods reverse and can improve BER by up to 610×, "
-    "with the effect scaling with decision-boundary crowding (BPSK < QPSK < 16-QAM). Six real "
+    "once real channel memory exists, the CNN reverses and can improve BER by up to 610× — though "
+    "the classical adaptive filters (LMS/NLMS) remain largely unhelpful specifically for BPSK even "
+    "with real ISI present — with the CNN's advantage scaling with decision-boundary crowding "
+    "(BPSK < QPSK < 16-QAM). Six real "
     "implementation bugs, a missing standard baseline (Zero-Forcing), and several correlational "
     "hypotheses were found, root-caused, and — in two cases — directly confirmed or refuted via "
     "targeted interventions, using a discipline of checking every anomalous result against its "
@@ -447,8 +449,9 @@ add_para(doc,
 )
 add_para(doc,
     "Index Terms — Adaptive filtering, LMS, NLMS, RLS, convolutional neural network, denoising "
-    "autoencoder, software-defined radio, channel equalization, bit error rate, inter-symbol "
-    "interference, Zero-Forcing, MMSE equalizer, BPSK, QPSK, 16-QAM.",
+    "autoencoder, Hybrid cascade, software-defined radio, channel equalization, bit error rate, "
+    "inter-symbol interference, time-varying fading, Zero-Forcing, MMSE equalizer, BPSK, QPSK, "
+    "16-QAM.",
     italic=True, size=10
 )
 
@@ -740,7 +743,7 @@ add_para(doc,
 
 add_heading(doc, "3.7 Follow-Up: Is “MSE Is Boundary-Blind” a Tested Causal Claim?", level=2)
 add_para(doc,
-    "Section 3.6's diagnosis was an explanation, not a tested claim. A boundary-hinge loss (MSE + "
+    "Section 3.5’s diagnosis was an explanation, not a tested claim. A boundary-hinge loss (MSE + "
     "a margin penalty for crossing the decision boundary, added to an architecturally-identical "
     "CNN) was built and evaluated on Case Study 1's exact configuration to test it directly."
 )
@@ -938,9 +941,10 @@ add_heading(doc, "4.9 Follow-Up: RLS as a Third Classical Baseline", level=2)
 add_para(doc,
     "RLS was originally excluded from Case Study 2 to keep exactly one variable (the channel) "
     "different from Case Study 1. Before this first real use, src/rls_filter.py — implemented but "
-    "unused — needed a real safety fix: it defaulted to unguarded decision-directed continuation, "
-    "the same broken |d-y|-threshold pattern already fixed for LMS/NLMS (Section 3.2). Hardened to "
-    "frozen-by-default first (16 new regression tests), then run at Case Study 2's full scale."
+    "unused — needed a real safety fix (this project's FIFTH real bug): it defaulted to unguarded "
+    "decision-directed continuation, the same broken |d-y|-threshold pattern already fixed for "
+    "LMS/NLMS (Section 3.2). Hardened to frozen-by-default first (16 new regression tests), then "
+    "run at Case Study 2's full scale."
 )
 add_para(doc,
     "First pass (RLS without tail-averaging): not the simple \"RLS wins\" result predicted — RLS "
@@ -966,12 +970,17 @@ add_table_caption(doc, "RLS error counts before/after tail-averaging, and improv
 add_table(doc, ["Condition", "RLS errors (before)", "RLS errors (after)", "Improvement", "vs. LMS (after)"], rls_rows)
 doc.add_paragraph()
 add_para(doc,
-    "\"vs. LMS(after)\" is ≥1.0 at every SNR level tested — RLS with tail-averaging is never worse "
-    "than LMS/NLMS anywhere in this study's range, confirming the original future-work rationale "
-    "once RLS is given the same hardening LMS/NLMS already had. RLS is also cheaper per-sample than "
-    "NLMS in this implementation despite its higher algorithmic complexity, another instance of "
-    "Section 8's compute-vs-wall-clock finding. Full detail, including the process lesson about "
-    "verifying re-run results against fresh file timestamps: report/findings_rls_comparison.md."
+    "Checked with the same formal significance test Section 4.5 applies elsewhere, not eyeballed: "
+    "Fisher's exact test on RLS-before-vs-after is significant at every SNR level (p<10⁻¹² "
+    "throughout); RLS(after)-vs-LMS/NLMS(after) is significant from -10 to 10dB and consistent with "
+    "a tie at 15-20dB where counts near zero (e.g. BPSK 20dB: RLS 0 vs. NLMS 4 errors, p=0.125 — "
+    "reported honestly as not distinguishable, not claimed as a further win). \"vs. LMS(after)\" is "
+    "≥1.0 at every SNR level tested — RLS with tail-averaging is never worse than LMS/NLMS anywhere "
+    "in this study's range, confirming the original future-work rationale once RLS is given the "
+    "same hardening LMS/NLMS already had. RLS is also cheaper per-sample than NLMS in this "
+    "implementation despite its higher algorithmic complexity, another instance of Section 8's "
+    "compute-vs-wall-clock finding. Full detail, including the process lesson about verifying "
+    "re-run results against fresh file timestamps: report/findings_rls_comparison.md."
 )
 rlsfig = FIGURES_DIR / "rls_comparison"
 add_figure(doc, rlsfig / "ber_vs_snr_BPSK.png", "BER vs Input SNR incl. RLS, BPSK")
@@ -1112,17 +1121,26 @@ add_callout(doc,
     "The named falsification test was then actually performed: a new min_norm_power parameter "
     "(default 0.0, zero effect on any other experiment) floors NLMS's normalization denominator. "
     "Re-running the flat-fading control with the floor set to 25% of each trial's own measured "
-    "mean windowed power MEASURABLY CLOSES NLMS's disadvantage in every tested cell — the "
+    "mean windowed power MEASURABLY CLOSES NLMS's disadvantage in every tested POOLED cell — the "
     "Frozen/DD improvement ratio rises from 0.77x to 0.98x (BPSK 10dB), 0.72x to 0.83x (BPSK "
     "15dB), 0.96x to 1.14x (QPSK 10dB), and 1.12x to 1.80x (QPSK 15dB) — QPSK's two cells FLIP "
     "from \"DD doesn't help\" to \"DD measurably helps.\""
 )
 add_para(doc,
-    "BPSK's gap to LMS's reported benefit is reduced but not fully closed — the normalization "
-    "mechanism is a real, causally-confirmed contributor, but not the sole one for BPSK "
-    "specifically. This turns a best-supported explanation into a demonstrated cause: NLMS's "
-    "instantaneous normalization is not merely inferred but shown, by direct intervention, to "
-    "produce the destabilizing feedback loop that LMS's fixed step size structurally cannot have."
+    "The pooled averages hide real per-trial variance, reported rather than smoothed over: of 50 "
+    "individual trials, 27 changed measurably under the floor — 16 improved, 11 regressed. Ten "
+    "regressions are negligible (<0.001 BER), but one is not: BPSK 15dB trial 1 went from 0.229 to "
+    "0.429 under flooring, close to random-guessing. The floor is a net improvement on average, not "
+    "a guaranteed improvement every time — a production deployment would need a less aggressive or "
+    "smoothed floor to manage that per-trial risk. A 10%/25%/50% floor-fraction sensitivity check "
+    "confirms the conclusion isn't fragile to the 25% value chosen: 10% is clearly too small "
+    "(worse than 25% in every tested cell), while 50% performs comparably or better — the pattern "
+    "a real mechanism should show, not flat insensitivity. BPSK's gap to LMS's reported benefit is reduced "
+    "but not fully closed — the normalization mechanism is a real, causally-confirmed contributor, "
+    "but not the sole one for BPSK specifically. This turns a best-supported explanation into a "
+    "demonstrated cause: NLMS's instantaneous normalization is not merely inferred but shown, by "
+    "direct intervention, to produce the destabilizing feedback loop that LMS's fixed step size "
+    "structurally cannot have."
 )
 
 add_heading(doc, "6.4 Conclusion", level=2)
@@ -1289,7 +1307,7 @@ add_para(doc,
 )
 rec_rows = [
     ["Clean/near-memoryless channel, any modulation", "No-Processing (do nothing)",
-     "Case Study 1: every method is strictly worse than doing nothing, 56/56 comparisons (§3.6)."],
+     "Case Study 1: every method is strictly worse than doing nothing, 56/56 comparisons (§3.5)."],
     ["Real ISI, BPSK", "CNN if compute allows; else No-Processing",
      "§4.6: BPSK barely benefits from any equalizer; only CNN shows a small, consistent edge (1.1-1.8x)."],
     ["Real ISI, QPSK or 16-QAM", "CNN",
@@ -1313,15 +1331,17 @@ add_callout(doc,
     "advantage grows, not shrinks, as the situation gets more realistic."
 )
 add_para(doc,
-    "How this compares to published work: literature on classical adaptive equalizers reports RLS "
-    "beating LMS by ~45-51% BER reduction (~1.8-2.0x) for BPSK/QPSK/8PSK. This project's first-pass "
-    "RLS result looked like a contradiction (RLS losing to a heavily-hardened LMS/NLMS) — but that "
-    "was an unfair comparison against an unhardened RLS. Once RLS was given equivalent hardening "
-    "(§4.9), the corrected result aligns well with the published range (1.1x-3.8x, bracketing "
-    "~1.8-2.0x in the middle). Separately, published comparisons of deep denoising autoencoders "
-    "against classical filters report neural approaches pulling ahead specifically when channel "
-    "characteristics are complex or non-linear — a pattern this project's own Case Study 1 vs. "
-    "Case Study 2/4 comparison reproduces independently, from first principles."
+    "How this compares to published work: literature on classical adaptive equalizers [1], [3], [4] "
+    "reports RLS beating LMS by ~45-51% BER reduction (~1.8-2.0x) for BPSK/QPSK/8PSK; a separate "
+    "ZF/LMS/RLS comparative study [2] motivated adding the Zero-Forcing baseline in Section 4.10. "
+    "This project's first-pass RLS result looked like a contradiction (RLS losing to a heavily-"
+    "hardened LMS/NLMS) — but that was an unfair comparison against an unhardened RLS. Once RLS was "
+    "given equivalent hardening (§4.9), the corrected result aligns well with the published range "
+    "(1.1x-3.8x, bracketing ~1.8-2.0x in the middle). Separately, published comparisons of deep "
+    "denoising autoencoders against classical filters [5], [6] report neural approaches pulling "
+    "ahead specifically when channel characteristics are complex or non-linear — a pattern this "
+    "project's own Case Study 1 vs. Case Study 2/4 comparison reproduces independently, from first "
+    "principles. Full citations: References."
 )
 
 doc.add_page_break()
@@ -1346,7 +1366,7 @@ add_numbered(doc, [
     "testing) materially changed which findings survived scrutiny and should be standard practice.",
     "Definitional identities are a cheap, powerful bug-finder — all three Case Study 2 bugs, plus "
     "the fourth found in Case Study 3, were caught by knowing what a value must equal by definition.",
-    "A regression test suite (tests/, 35 tests) now codifies every invariant found this way.",
+    "A regression test suite (tests/, 58 tests) now codifies every invariant found this way.",
     "A design decision's stated justification can be narrower, or broader, than what was actually "
     "verified — only testing the untested case reveals which (Case Study 3).",
     "A mechanistic explanation is only as strong as the experiment that tests it — the boundary-"
@@ -1373,9 +1393,10 @@ add_numbered(doc, [
     "narrow regime, not validated project-wide: "
     "training-draw variance is consistently smaller than test-time Monte Carlo variance across all "
     "4 conditions tested (ratio 0.00-0.32x), for Case Study 1's CNN only.",
-    "RLS, added as a third classical baseline, required fixing a real safety bug before its first "
-    "use, then a first pass without tail-averaging found it measurably worse than LMS/NLMS at "
-    "low-to-moderate SNR. Adding tail-averaging (the same hardening LMS/NLMS already had) and "
+    "RLS, added as a third classical baseline, required fixing a real safety bug (this project's "
+    "fifth) before its first use, then a first pass without tail-averaging found it measurably "
+    "worse than LMS/NLMS at low-to-moderate SNR. Adding tail-averaging (the same hardening LMS/NLMS "
+    "already had) and "
     "re-running — after catching and correcting an initial comparison against a stale results "
     "file — found RLS now matches or beats LMS/NLMS at EVERY SNR level tested, confirming the "
     "original theoretical motivation once given a fair comparison.",
@@ -1475,31 +1496,38 @@ doc.add_page_break()
 # ===========================================================================
 add_heading(doc, "References", level=1)
 add_para(doc,
-    "External sources consulted for the literature comparison (Section 9.5) and for document "
-    "formatting/structure guidance, in citation order. All internal findings — every number, "
-    "table, and figure elsewhere in this report — are this project's own original results; the "
-    "sources below were used only to contextualize how they compare to, or were formatted "
-    "consistently with, prior published work."
+    "All findings, numbers, tables, and figures elsewhere in this report are this project's own "
+    "original results. The technical sources below ([1]-[6]) are cited by number at the specific "
+    "claims they support in Section 9.5; they were used only to contextualize how this project's "
+    "own measurements compare to prior published work, never as a substitute for this project's own "
+    "measurements. A second, separate list credits sources consulted for this report's own "
+    "formatting and structure (title page, abstract/executive-summary conventions) — these are not "
+    "cited for any technical/numerical claim and are listed separately to avoid conflating the two."
 )
+add_heading(doc, "Technical literature (cited in Section 9.5)", level=2)
 references = [
     "S. Kumar et al., \"Comparative Analysis of LMS, NLMS, and RLS Adaptive Filters in Vehicle "
     "Automation Systems under Mixed Noise Conditions,\" ResearchGate, 2025.",
     "\"Comparative Study of ZF, LMS and RLS Adaptive Equalization Techniques,\" arXiv:2312.06084, 2023.",
     "Ignitarium / Neurealm, \"Adaptive Filters for Signal Processing: A Comparative Study,\" "
-    "Medium / company engineering blog.",
+    "Medium / company engineering blog, n.d.",
     "\"Channel Equalization of Adaptive Filters Using LMS and RLS Algorithms,\" International "
-    "Journal of Creative Research Thoughts (IJCRT), rjpn.org.",
+    "Journal of Creative Research Thoughts (IJCRT), rjpn.org, n.d.",
     "R. Krishna, \"Autoencoders vs FIR Filters: Smarter Signal Denoising with ML and DSP,\" Medium, "
     "2025.",
-    "Omdena, \"Denoising Autoencoders,\" Omdena engineering blog.",
-    "IEEE Author Center, \"Structure Your Article,\" IEEE Journals guidance, "
-    "journals.ieeeauthorcenter.ieee.org.",
-    "Open Oregon Educational Resources, \"10.3 Abstract and Executive Summary,\" Technical Writing "
-    "(open textbook), openoregon.pressbooks.pub.",
-    "Scribbr, \"Thesis & Dissertation Title Page,\" scribbr.com.",
-    "Simon Fraser University Library, \"Formatting Your Thesis: Title Page,\" lib.sfu.ca.",
+    "Omdena, \"Denoising Autoencoders,\" Omdena engineering blog, n.d.",
 ]
 add_numbered(doc, references)
+add_heading(doc, "Document formatting and structure guidance (not cited for technical content)", level=2)
+formatting_refs = [
+    "IEEE Author Center, \"Structure Your Article,\" IEEE Journals guidance, "
+    "journals.ieeeauthorcenter.ieee.org, n.d.",
+    "Open Oregon Educational Resources, \"10.3 Abstract and Executive Summary,\" Technical Writing "
+    "(open textbook), openoregon.pressbooks.pub, n.d.",
+    "Scribbr, \"Thesis & Dissertation Title Page,\" scribbr.com, n.d.",
+    "Simon Fraser University Library, \"Formatting Your Thesis: Title Page,\" lib.sfu.ca, n.d.",
+]
+add_bullets(doc, formatting_refs)
 
 doc.add_page_break()
 
@@ -1507,7 +1535,7 @@ doc.add_page_break()
 # Appendix
 # ===========================================================================
 add_heading(doc, "Appendix: Project Structure & Regression Test Suite", level=1)
-add_para(doc, "A CI-enforced, 57-test regression suite (tests/, ~30s to run, run automatically on "
+add_para(doc, "A CI-enforced, 58-test regression suite (tests/, ~30s to run, run automatically on "
     "every push via GitHub Actions) codifies every invariant discovered during this project:")
 add_bullets(doc, [
     "test_lms_stability.py — LMS/NLMS never diverge below No-Processing; DD mode off by default.",
