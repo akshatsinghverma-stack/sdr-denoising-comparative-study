@@ -181,7 +181,7 @@ sdr_denoising_project/
    exactly when wrong decisions are most likely; LMS's fixed step size does
    the opposite in 16/16 trials.
 4. **16-QAM (Case Study 4) confirms decision-boundary crowding keeps
-   sharpening the effect** — equalization wins by up to 610x, and
+   sharpening the effect** — equalization wins by up to 1,831x, and
    No-Processing develops a hard, un-closeable BER floor that doesn't exist
    for BPSK/QPSK. (An earlier version of this finding also claimed the genie
    MMSE ceiling turns into an outright regression here — that was this

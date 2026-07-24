@@ -439,7 +439,7 @@ add_para(doc,
     "memoryless channel, every method tested is never better than doing nothing (strictly worse in "
     "52 of 56 comparisons, tied in the remaining 4), because the raw received sample is already a "
     "sufficient statistic for detection; "
-    "once real channel memory exists, the CNN reverses and can improve BER by up to 610× — though "
+    "once real channel memory exists, the CNN reverses and can improve BER by up to 1,831× — though "
     "the classical adaptive filters (LMS/NLMS) remain largely unhelpful specifically for BPSK even "
     "with real ISI present — with the CNN's advantage scaling with decision-boundary crowding "
     "(BPSK < QPSK < 16-QAM), but shown to be substantially channel-specific rather than a general "
@@ -1281,17 +1281,19 @@ if df_16qam is not None:
 
 add_heading(doc, "BER Improvement Ratio Comparison", level=2)
 mod_compare = [
-    ["LMS", "never wins (≤0.7x)", "31.5x (15dB)", "break-even at 0dB, 480x at 25dB"],
-    ["NLMS", "never wins", "43.0x (15dB)", "break-even at 0dB, 610x at 25dB"],
-    ["CNN", "1.8x (10dB, best)", "473x (15dB)", "557x at 25dB"],
+    ["LMS", "never wins (≤0.7x)", "31.5x (15dB)", "break-even at 0dB, 475x at 25dB"],
+    ["NLMS", "never wins", "43.0x (15dB)", "break-even at 0dB, 583x at 25dB"],
+    ["CNN", "1.8x (10dB, best)", "473x (15dB)", "1,831x at 25dB"],
 ]
 add_table_caption(doc, "BER improvement ratio vs. No-Processing, by modulation")
 add_table(doc, ["Method", "BPSK best (§4.6)", "QPSK best (§4.6)", "16-QAM (this study)"], mod_compare)
 
 doc.add_paragraph()
 add_callout(doc,
-    "Confirmed, more dramatically than expected: equalization wins by up to 610x for 16-QAM, "
-    "versus QPSK's 473x. But the mechanism is richer than just “a bigger ratio.”"
+    "Confirmed, more dramatically than expected: equalization wins by up to 1,831x for 16-QAM, "
+    "versus QPSK's 473x. But the mechanism is richer than just “a bigger ratio.” (This 16-QAM figure "
+    "increased from an earlier 557x once this experiment was re-run and incidentally picked up two "
+    "previously-unapplied fixes -- see Section 11.)"
 )
 add_bullets(doc, [
     "No-Processing hits a genuinely new, hard BER floor (0.0755-0.0814 from 20-30dB) — never seen "
@@ -1409,7 +1411,7 @@ rec_rows = [
     ["Real ISI, BPSK", "CNN if compute allows; else No-Processing",
      "§4.6: BPSK barely benefits from any equalizer; only CNN shows a small, consistent edge (1.1-1.8x)."],
     ["Real ISI, QPSK or 16-QAM", "CNN",
-     "§4.6/7: CNN wins by 100-610x — the single largest, most consistent effect in this project."],
+     "§4.6/7: CNN wins by 100-1,831x — the single largest, most consistent effect in this project."],
     ["ISI channel, microcontroller-class compute only", "LMS or NLMS, moderate-high SNR",
      "§8: 64-640 MMACs/s vs. CNN's 6.8-136 GMACs/s; still a real 1-3 order-of-magnitude win for QPSK."],
     ["ISI channel, classical filters, any SNR", "RLS (tail-averaged)",
@@ -1579,11 +1581,15 @@ add_bullets(doc, [
     "axis on N/2 rather than (N-1)/2, making the transmit/receive filter measurably asymmetric. "
     "Fixed and verified symmetric. Impact was QUANTIFIED, not assumed: a targeted before/after "
     "comparison (20,000-symbol BPSK, Case Study 2's channel) gave BER 61/20,000 (old) vs. 55/20,000 "
-    "(new) at 0dB and identical 0 errors at 10-20dB, output SNR shifting only ~0.01dB — small and "
-    "directionally favorable, but Case Studies 2/4, the severity sweep, and Case Study 3's SPS=4 "
-    "portion still predate this fix and were not re-run at full scale (the RLS and ZF follow-ups "
-    "were run after the fix and already reflect it; the boundary-loss and training-variance "
-    "follow-ups never used this filter at all, so are unaffected regardless).",
+    "(new) at 0dB and identical 0 errors at 10-20dB, output SNR shifting only ~0.01dB. UPDATE: Case "
+    "Study 2, the severity sweep, and Case Study 4 have SINCE all been re-run at full scale "
+    "(incidentally, while re-verifying the eighth bug's fix, since all three share that fix's "
+    "affected equalizer code) -- confirming this same small, directionally-favorable effect at full "
+    "scale (e.g. Case Study 2 QPSK 5dB CNN: 86,934->86,514 errors). Case Study 4's own numbers moved "
+    "far more, but for a different, already-documented reason (the seventh bug, Section 3.7) -- RRC's "
+    "own contribution there is expected to be similarly small. Only Case Study 3's SPS=4 portion "
+    "remains outside this update (the boundary-loss/training-variance follow-ups never used this "
+    "filter at all, so are unaffected regardless).",
     "The \"channel looks static during the preamble\" premise for Case Study 3 was asserted, not "
     "measured, and found false for the actual default parameters (Section 6.1) — this does not "
     "invalidate Section 6.4's Frozen-vs-DD comparison, but changes the causal story for why DD helps.",
@@ -1598,9 +1604,11 @@ add_bullets(doc, [
     "symbols, SPS=1, a 32-sample uncovered tail) HAS been re-run with the fix and its tables reflect "
     "it: CNN's floor at both modulations' 15-20dB is now exactly 0 (previously 1.51e-4/1.71e-4); "
     "Hybrid's floor dropped substantially but not to zero, now matching LMS's own residual "
-    "misadjustment floor. Case Study 4 (25,000 symbols, SPS=4, also a 32-sample tail) and the "
-    "boundary-aware-loss/training-variance follow-ups (25,000/15,000 symbols, SPS=1) have NOT yet "
-    "been re-run and still show pre-fix numbers — Case Study 2, the severity sweep, and Case Study "
+    "misadjustment floor. Case Study 4 (25,000 symbols, SPS=4, also a 32-sample tail) has SINCE also "
+    "been re-run (incidentally, while re-verifying the eighth bug's fix) -- CNN's error count at "
+    "25dB dropped from 69/500,000 to 21/500,000, and Section 7's ratio table reflects this. The "
+    "boundary-aware-loss/training-variance follow-ups (25,000/15,000 symbols, SPS=1) remain NOT yet "
+    "re-run and still show pre-fix numbers — Case Study 2, the severity sweep, and Case Study "
     "3's SPS=4 portion use signal lengths that divide the stride exactly and were never affected "
     "regardless of when they were run.",
     "The autocorrelation-conjugate bug (Sections 4.7/4.10's correction, this project's eighth) "

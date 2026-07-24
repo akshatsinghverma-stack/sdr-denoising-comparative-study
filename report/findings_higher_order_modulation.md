@@ -46,13 +46,23 @@ near 50% BER).
 
 | Method | BPSK best (report §4.6) | QPSK best (report §4.6) | 16-QAM (this run) |
 |---|---|---|---|
-| LMS | never wins (≤0.7x anywhere) | 31.5x (15dB) | break-even at 0dB (0.88x), **480x at 25dB** |
-| NLMS | never wins | 43.0x (15dB) | break-even at 0dB (0.88x), **610x at 25dB** |
-| CNN | 1.8x (10dB, best case) | 473x (15dB) | **557x at 25dB** |
+| LMS | never wins (≤0.7x anywhere) | 31.5x (15dB) | break-even at 0dB (0.88x), **475x at 25dB** |
+| NLMS | never wins | 43.0x (15dB) | break-even at 0dB (0.88x), **583x at 25dB** |
+| CNN | 1.8x (10dB, best case) | 473x (15dB) | **1,831x at 25dB** |
 
-Exact counts at 25dB (500,000 bits per cell): No-Processing 38,408 errors (BER 0.0768); LMS 80
-errors (0.00016, 480x better); NLMS 63 errors (0.000126, 610x better); CNN 69 errors (0.000138,
-557x better).
+Exact counts at 25dB (500,000 bits per cell): No-Processing 38,455 errors (BER 0.0769); LMS 81
+errors (0.000162, 475x better); NLMS 66 errors (0.000132, 583x better); CNN 21 errors (0.000042,
+1,831x better).
+
+**Note: these numbers moved from an earlier 480x/610x/557x (LMS/NLMS/CNN) after this experiment was
+re-run alongside report.md Section 4.7's eighth-bug fix (a bug in `design_mmse_equalizer` that also
+affects this experiment's MMSE row) — the re-run incidentally applied two *earlier* fixes that had
+never previously been run through this experiment: the sixth bug (asymmetric RRC filter) and the
+seventh bug (CNN reconstruction tail-fill, report.md Section 3.7).** CNN's error count dropped from
+69 to 21 (a ~3.3x reduction), consistent with the same zero-fill mechanism already root-caused for
+the main case studies; No-Processing's own count barely moved (38,408→38,455), consistent with the
+RRC fix's independently-quantified small effect. This is a genuine, verified improvement in CNN's
+measured advantage, not a correction in the other direction.
 
 At low-to-moderate SNR (0-10dB), LMS/NLMS remain break-even-or-slightly-worse for 16-QAM too
 (0.86-0.91x at 0dB) — the same qualitative pattern seen for BPSK throughout this project, before
