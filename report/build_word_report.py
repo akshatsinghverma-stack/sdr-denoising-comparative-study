@@ -1723,3 +1723,34 @@ add_para(doc,
 set_update_fields_on_open(doc)
 doc.save(str(OUT_PATH))
 print(f"Saved: {OUT_PATH}")
+
+# python-docx can only ever write the TOC/List of Figures/List of Tables
+# field CODE, never the computed RESULT (real heading/caption text and page
+# numbers) -- that requires Word's own layout engine, which python-docx never
+# runs. Desktop Word recomputes these on open (updateFields=true above is set
+# for exactly that reason), but mobile viewers, PDF export paths, and some
+# print drivers only render whatever is already cached and never execute
+# field-code logic, so without this step those pages render blank or throw
+# downstream printer errors. If Word is installed locally, bake real content
+# into the cache now via COM automation (report/update_word_fields.ps1);
+# otherwise this is a no-op with an explicit warning, not a silent gap --
+# open the file in Word, Ctrl+A then F9, and save before distributing it.
+try:
+    import subprocess
+    result = subprocess.run(
+        ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass",
+         "-File", str(OUT_PATH.parent / "update_word_fields.ps1"),
+         "-Path", str(OUT_PATH)],
+        capture_output=True, text=True, timeout=120,
+    )
+    if result.returncode == 0:
+        print(result.stdout.strip())
+    else:
+        print(f"[WARN] Could not auto-update TOC/figure list fields (exit {result.returncode}): "
+              f"{result.stderr.strip()[:300]}\n"
+              f"       Open the file in Word, press Ctrl+A then F9, and save before distributing it "
+              f"(mobile viewers and some printers render blank pages without this step).")
+except Exception as e:
+    print(f"[WARN] Could not auto-update TOC/figure list fields ({e}). "
+          f"Open the file in Word, press Ctrl+A then F9, and save before distributing it "
+          f"(mobile viewers and some printers render blank pages without this step).")
