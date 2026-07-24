@@ -64,20 +64,25 @@ enough SNR headroom exists for equalization to pay off.
    improving further with more SNR — a floor not seen for BPSK or QPSK in this project. Deterministic
    ISI alone is now enough to permanently cross 16-QAM's tight decision margins regardless of how
    clean the noise gets; there is no SNR high enough to rescue the raw, unequalized receiver.
-2. **The genie MMSE linear equalizer becomes actively worse than doing nothing at high SNR**:
-   0.71-0.74x at 20-30dB (109,654/500,000 errors at 20dB vs. No-Processing's 40,713) — a sharper,
-   more dramatic version of report.md Section 4.7's linear-equalizer-ceiling finding. With 16
-   crowded constellation points, the same noise-enhancement/residual-ISI tradeoff that only
-   modestly hurt QPSK's MMSE bound at high SNR is severe enough here to make the "perfect channel
-   knowledge, linear-only" equalizer a net loss relative to raw hard-decision demod.
+2. ~~The genie MMSE linear equalizer becomes actively worse than doing nothing at high SNR~~ —
+   **CORRECTED: this was this project's eighth real bug, not a real effect.** The original claim
+   (0.71-0.74x at 20-30dB, ~109,654/500,000 errors at 20dB) rested on an autocorrelation-conjugate
+   error in `design_mmse_equalizer` (`src/mmse_equalizer.py`), fixed and detailed in report.md
+   Section 4.7. Re-run with the fix: **MMSE errors at 20/25/30dB are 46/46/43 out of 500,000 bits —
+   essentially tied with CNN (30/21/21) and roughly 880-970x *better* than No-Processing**
+   (40,624/38,455/37,757), which retains its own genuine, un-closeable floor from finding 1 above.
+   A genie with perfect channel and noise knowledge performing close to optimally at high SNR is
+   the textbook-expected result; there is no "linear-equalizer regression" here, for 16-QAM or any
+   modulation tested in this project, once the equalizer is computed correctly.
 
 ## Conclusion
 
-**The decision-boundary-crowding hypothesis is confirmed, and more dramatically than the
-BPSK→QPSK comparison alone predicted** — but the mechanism is richer than just "a bigger
-improvement ratio." Crowding does two additional things: it creates a hard, un-closeable BER floor
-for No-Processing that doesn't exist for BPSK/QPSK, and it turns the linear-equalizer ceiling
-(previously a modest QPSK-specific curiosity) into an outright regression below doing nothing.
-Both are consistent with, and extend, this project's core finding that a channel's practical
-impact depends jointly on the channel's structure and the modulation's decision geometry — 16-QAM
-is simply the sharpest lens on that relationship tested so far.
+**The decision-boundary-crowding hypothesis is confirmed for finding 1 (No-Processing's hard
+floor), and more dramatically than the BPSK→QPSK comparison alone predicted.** Finding 2 as
+originally stated was wrong — a bug, not a sharper version of report.md Section 4.7's (itself
+corrected) linear-equalizer-ceiling claim. What survives, once genie MMSE is computed correctly: a
+hard, un-closeable BER floor for No-Processing that doesn't exist for BPSK/QPSK, consistent with
+this project's core finding that a channel's practical impact depends jointly on the channel's
+structure and the modulation's decision geometry — 16-QAM is the sharpest lens on that relationship
+tested so far, but the genie MMSE bound itself remains a strong reference at every modulation
+tested, not a cautionary tale about linear equalization.

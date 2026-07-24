@@ -116,7 +116,7 @@ sdr_denoising_project/
 │   ├── test_cnn_channel_generalization.py  # Does the CNN generalize across channels, or memorize one?
 │   ├── diagnose_training_variance.py   # Test-time vs. training-draw BER variance
 │   └── run_all.py                      # Alias of run_case1_no_isi.py
-├── tests/                        # Regression test suite (63 tests, ~40s) -- see below
+├── tests/                        # Regression test suite (68 tests, ~2.5min) -- see below
 ├── results/
 │   ├── figures/                  # One subdirectory per case study/analysis
 │   └── tables/                   # One or more CSVs per case study/analysis
@@ -181,35 +181,43 @@ sdr_denoising_project/
    exactly when wrong decisions are most likely; LMS's fixed step size does
    the opposite in 16/16 trials.
 4. **16-QAM (Case Study 4) confirms decision-boundary crowding keeps
-   sharpening the effect** — equalization wins by up to 610x, No-Processing
-   develops a hard, un-closeable BER floor that doesn't exist for BPSK/QPSK,
-   and the genie MMSE's linear-equalizer ceiling turns from a curiosity into
-   an outright regression below doing nothing.
+   sharpening the effect** — equalization wins by up to 610x, and
+   No-Processing develops a hard, un-closeable BER floor that doesn't exist
+   for BPSK/QPSK. (An earlier version of this finding also claimed the genie
+   MMSE ceiling turns into an outright regression here — that was this
+   project's eighth real bug, corrected: see finding #12 below. The
+   properly-computed genie MMSE bound stays close to optimal at every
+   modulation tested, not a regression at any of them.)
 5. **Two previously-open questions were resolved with the same instrumented-
    diagnostic-plus-significance-test methodology**: a boundary-aware CNN
    loss confirmed "MSE is boundary-blind" as a real, partial, modulation-
    dependent cause of Case Study 1's headline result; and a separate,
-   loss-independent high-SNR CNN error floor was root-caused to the CNN's
-   window/overlap-add reconstruction (81.1% same-position overlap between
-   loss functions, χ²=168.0 p=3.5×10⁻³⁶ non-uniform clustering by window
-   phase), ruling out "unfixable noise" as the primary cause.
+   loss-independent high-SNR CNN error floor was *first* attributed (on
+   strong-looking correlational grounds — 81.1% same-position overlap
+   between loss functions, χ²=168.0 p=3.5×10⁻³⁶ non-uniform clustering by
+   window phase) to the CNN's window/overlap-add reconstruction — **this
+   specific conclusion was later found to be wrong; see finding #10 below
+   for the correction.**
 6. **Compute cost and BER cost do not move together.** CNN needs ~106-212x
    more raw arithmetic than LMS/NLMS/MMSE per sample, yet is *faster* in
    wall-clock terms on this project's CPU-only stack — an implementation-
    efficiency artifact, not an algorithmic one; the analytical MAC gap
    reasserts itself as a genuine microcontroller-vs-applications-processor
    deployment question.
-7. **Seven real bugs were found and fixed** during this project (LMS
+7. **Eight real bugs were found and fixed** during this project (LMS
    step-size/divergence, a receiver matched-filter gain bug, an SNR
    calibration bug, a multipath-convolution causality bug, a
    decision-directed reliability gate that was silently dead code at
-   SPS>1, an asymmetric RRC pulse-shaping filter, and — found via a
-   code-correctness critique pass late in the project — a CNN window-
+   SPS>1, an asymmetric RRC pulse-shaping filter, a CNN window-
    reconstruction bug that silently zero-filled any trailing samples no
    window covered, read by a hard-decision demodulator as a fixed, wrong-
-   half-the-time bit), every one caught by checking a value against what it
-   must equal by definition. A 63-test regression suite (`tests/`), run
-   automatically on every push via GitHub Actions, now codifies all of them.
+   half-the-time bit, and — found via a final code-correctness critique
+   pass — a conjugate error in the genie MMSE/ZF equalizer's autocorrelation
+   computation, `np.correlate` silently returning the conjugate of the value
+   its own Wiener-Hopf formula needed), every one caught by checking a value
+   against what it must equal by definition. A 68-test regression suite
+   (`tests/`), run automatically on every push via GitHub Actions, now
+   codifies all of them.
 8. **A four-agent adversarial self-critique pass** (statistical rigor, DSP
    correctness, code quality, and a skeptical outside reader, each briefed
    independently) surfaced and led to fixes for: the RRC filter bug above,
@@ -270,6 +278,19 @@ sdr_denoising_project/
     training and deployment channels match, but shouldn't be assumed to
     survive a channel that drifts from that training distribution. See
     [report/findings_cnn_channel_generalization.md](report/findings_cnn_channel_generalization.md).
+12. **A final code-correctness critique pass found an eighth real bug that had produced a wrong
+    conclusion backed by a real, honest, three-part investigation, not just a correlational
+    guess.** `design_mmse_equalizer` (`src/mmse_equalizer.py`) computed its autocorrelation via
+    `np.correlate`, which silently returns the complex conjugate of the value its own documented
+    Wiener-Hopf formula requires — negligible for BPSK, severe for QPSK/16-QAM. This was the actual
+    cause of two previously-reported findings: "QPSK genie MMSE gets worse at high SNR" (Case Study
+    2) and "16-QAM genie MMSE regresses below doing nothing" (Case Study 4) — both previously
+    investigated with real phase-bias, tap-count, and frequency-response checks that were each
+    individually correct but collectively missed the one place the bug lived. Fixed and verified
+    against a from-scratch ground-truth Wiener-Hopf solution; re-running Case Study 2, the severity
+    sweep, Case Study 4, and the ZF comparison at full scale reverses both findings completely —
+    genie MMSE now ties or beats every method at high SNR for QPSK and 16-QAM, exactly what a genie
+    with perfect channel and noise knowledge should do.
 
 See [report/report.md](report/report.md) for the full mechanism and verification behind each
 finding, and the `report/findings_*.md` files for the deep-dive write-up

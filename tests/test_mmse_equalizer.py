@@ -6,9 +6,9 @@ should never be worse than doing nothing at all.
 import numpy as np
 import pytest
 
-from src.signal_gen import generate_bpsk
+from src.signal_gen import generate_bpsk, generate_qpsk
 from src.channel import add_multipath, add_awgn
-from src.utils import receiver_frontend, demod_bpsk
+from src.utils import receiver_frontend, demod_bpsk, demod_qpsk_fast
 from src.metrics import compute_snr_db, compute_ber_count
 from src.mmse_equalizer import (measure_channel_taps, design_mmse_equalizer, apply_mmse_equalizer,
                                   design_zf_equalizer, apply_zf_equalizer)
@@ -25,6 +25,66 @@ def test_measure_channel_taps_peak_matches_dominant_multipath_tap():
     # The dominant tap should be at (or immediately around) peak_idx and be
     # the largest-magnitude tap in the measured response.
     assert np.argmax(np.abs(g)) == peak_idx
+
+
+def test_mmse_solves_the_documented_wiener_equation():
+    """Directly verifies design_mmse_equalizer's R/p construction against an
+    independent, from-scratch reimplementation of its own docstring formula
+    (c[m] = sum_k g[k]*conj(g[k+m])), on a complex, non-symmetric channel --
+    added after a code-correctness critique pass found np.correlate(g, g)
+    silently returns conj(c[m]), not c[m], for complex g (this project's
+    eighth real bug). This test would have caught that bug directly; the
+    existing BPSK-only tests below did not, because BPSK's real symbols
+    mostly mask a conjugate error in the equalizer's own coefficients."""
+    rng = np.random.default_rng(1)
+    g = rng.normal(size=4) + 1j * rng.normal(size=4)
+    num_taps, peak_idx, noise_var = 4, 0, 0.01
+    delay = num_taps // 2
+
+    w, _ = design_mmse_equalizer(g, peak_idx=peak_idx, noise_var=noise_var, num_taps=num_taps)
+
+    def c_true(m):
+        s = 0j
+        for k in range(len(g)):
+            if 0 <= k + m < len(g):
+                s += g[k] * np.conj(g[k + m])
+        return s
+
+    R = np.array([[c_true(i - j) for j in range(num_taps)] for i in range(num_taps)]) + noise_var * np.eye(num_taps)
+    def g_at(k):
+        idx = peak_idx + k
+        return g[idx] if 0 <= idx < len(g) else 0j
+    p = np.array([g_at(delay - i) for i in range(num_taps)])
+    w_true = np.linalg.solve(R, p)
+
+    assert np.allclose(w, w_true, atol=1e-10), "design_mmse_equalizer's solution does not match its own documented Wiener-Hopf equation"
+
+
+@pytest.mark.parametrize("snr", [-10, 0, 10, 20])
+def test_mmse_never_worse_than_no_processing_qpsk(snr):
+    """QPSK-specific coverage (previously entirely absent from this file) --
+    QPSK is exactly where the conjugate bug above had a severe, measured
+    impact (~50x worse BER at 5dB) while BPSK's was negligible, so a
+    BPSK-only test suite could pass while QPSK was substantially broken."""
+    tx, bits, h_rrc = generate_qpsk(NUM_SYMBOLS, seed=1, sps=SPS)
+    rx_clean = add_multipath(tx, MULTIPATH)
+    isi_ref = receiver_frontend(rx_clean, h_rrc, sps=SPS)
+    g, peak_idx = measure_channel_taps(h_rrc, MULTIPATH, sps=SPS, num_taps=21)
+
+    noisy = add_awgn(rx_clean, snr, seed=42 + snr)
+    syms_noproc = receiver_frontend(noisy, h_rrc, sps=SPS)
+    noise_var = np.mean(np.abs(isi_ref - syms_noproc) ** 2)
+
+    w, delay = design_mmse_equalizer(g, peak_idx, noise_var, num_taps=TAPS)
+    mmse_out = apply_mmse_equalizer(syms_noproc, w, delay)
+
+    e_noproc, n = compute_ber_count(bits, demod_qpsk_fast(syms_noproc))
+    e_mmse, _ = compute_ber_count(bits, demod_qpsk_fast(mmse_out))
+
+    assert e_mmse <= e_noproc, (
+        f"Genie MMSE ({e_mmse} errors) should never be worse than No-Processing "
+        f"({e_noproc} errors) at SNR={snr}dB, QPSK -- it has perfect channel+noise knowledge."
+    )
 
 
 @pytest.mark.parametrize("snr", [-10, 0, 10, 20])

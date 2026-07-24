@@ -83,10 +83,14 @@ so only for the frozen CNN:
 | **CNN** | **1.65×10⁻³** | **5.16x, 7.06x, 129.71x, 1.22x, 13.21x** |
 | MMSE (Genie) | 1.86×10⁻²  | 4.72x, 0.11x, 6.93x, 0.08x, 0.06x |
 
-CNN's degradation ratios (5.16x-129.71x) are consistently far above
-LMS/NLMS's tight band (0.67x-1.41x) across every held-out channel tested at
-this SNR — not just the sign-flipped-taps outlier. (MMSE's own ratios vary
-substantially too, but for a different, expected reason: it is re-measuring
+CNN's degradation ratios (1.22x-129.71x) are, for four of the five held-out
+channels, far above LMS/NLMS's tight band (0.67x-1.41x) — the exception is
+"different phase, same taps count" (1.22x), where the CNN is barely hurt at
+all, showing the effect depends on which specific way a channel differs, not
+just that it differs. The worst case (129.71x, sign-flipped taps) is what
+matters for a deployment-robustness argument, but the range is real, not a
+single cherry-picked outlier presented as if it were typical. (MMSE's own
+ratios vary substantially too, but for a different, expected reason: it is re-measuring
 the true channel every time, so its variation reflects each channel's own
 noise-enhancement/spectral-null properties, not a train/test mismatch — the
 comparison that matters here is CNN vs. LMS/NLMS, which share the same

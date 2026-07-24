@@ -397,7 +397,7 @@ meta_table.alignment = WD_TABLE_ALIGNMENT.CENTER
 meta_rows = [
     ("Scope", "4 case studies + 3 connecting analyses (severity sweep, boundary-aware loss, compute cost)"),
     ("This document", "Self-contained — includes full methodology, results, verification, and conclusions"),
-    ("Verification", "63-test regression suite (CI-enforced) · 7 real bugs found, root-caused, and fixed (Section 4.2, 6.2, 4.9, 3.7, 11) · reviewed via two adversarial self-critique passes"),
+    ("Verification", "68-test regression suite (CI-enforced) · 8 real bugs found, root-caused, and fixed (Section 4.2, 6.1, 4.9, 3.7, 4.7, 11) · reviewed via two adversarial self-critique passes"),
     ("Source code", "Available on request — see Appendix for the experiment/module file list"),
 ]
 for i, (k, v) in enumerate(meta_rows):
@@ -443,7 +443,7 @@ add_para(doc,
     "the classical adaptive filters (LMS/NLMS) remain largely unhelpful specifically for BPSK even "
     "with real ISI present — with the CNN's advantage scaling with decision-boundary crowding "
     "(BPSK < QPSK < 16-QAM), but shown to be substantially channel-specific rather than a general "
-    "equalization capability once tested on channels the CNN was not trained on. Seven real "
+    "equalization capability once tested on channels the CNN was not trained on. Eight real "
     "implementation bugs, a missing standard baseline (Zero-Forcing), and several correlational "
     "hypotheses were found, root-caused, and — in multiple cases — directly confirmed or refuted via "
     "targeted interventions (one of which overturned an earlier, statistically well-supported but "
@@ -532,8 +532,11 @@ add_numbered(doc, [
     "gate is dead code at SPS>1) while also refuting the general principle behind that decision: "
     "on a genuinely time-varying channel, LMS tracking earns back a real, substantial BER win.",
     "Case Study 4 (16-QAM) confirmed the decision-boundary-crowding hypothesis more dramatically "
-    "than BPSK/QPSK alone predicted, and revealed two new effects: a hard, un-closeable BER floor "
-    "for No-Processing, and the genie MMSE ceiling turning into an outright regression.",
+    "than BPSK/QPSK alone predicted, revealing a hard, un-closeable BER floor for No-Processing "
+    "not seen for BPSK/QPSK. (An earlier version of this finding also claimed the genie MMSE "
+    "ceiling turns into an outright regression here -- that was this project's eighth real bug, "
+    "corrected: the properly-computed genie MMSE bound stays close to optimal at every modulation "
+    "tested, not a regression at any of them.)",
     "A boundary-aware CNN loss confirmed \"MSE is boundary-blind\" as a real, partial, "
     "modulation-dependent cause of Case Study 1's headline result, closing up to 78.5% of QPSK's "
     "excess BER — but not BPSK's.",
@@ -761,7 +764,7 @@ add_para(doc,
 
 add_heading(doc, "3.7 Follow-Up: Is “MSE Is Boundary-Blind” a Tested Causal Claim?", level=2)
 add_para(doc,
-    "Section 3.5’s diagnosis was an explanation, not a tested claim. A boundary-hinge loss (MSE + "
+    "Section 3.6’s diagnosis was an explanation, not a tested claim. A boundary-hinge loss (MSE + "
     "a margin penalty for crossing the decision boundary, added to an architecturally-identical "
     "CNN) was built and evaluated on Case Study 1's exact configuration to test it directly."
 )
@@ -937,22 +940,39 @@ add_para(doc,
 add_heading(doc, "4.7 The Genie-Aided MMSE Bound", level=2)
 add_para(doc,
     "A closed-form linear MMSE equalizer given the channel's exact taps and noise level (a genie "
-    "no adaptive method has). At low-to-moderate SNR it behaves as expected: a real edge over "
-    "LMS/NLMS. At high SNR for QPSK, it does something worse than every adaptive method — "
-    "investigated, not dismissed: the equalizer's output has zero mean phase error (unbiased) but "
-    "a real residual phase spread (~16° std) large enough to cross QPSK's ±45° boundary while "
-    "harmless for BPSK's ±180°; increasing taps from 16 to 51 changed zero errors, ruling out "
-    "“too short a filter.” This is the standard limitation of linear equalization: fully "
-    "removing residual ISI here would amplify noise in a region where the channel attenuates the "
-    "signal more than MMSE is willing to pay for."
+    "no adaptive method has)."
+)
+add_callout(doc,
+    "CORRECTED FINDING (this project's EIGHTH real bug). The original analysis below concluded "
+    "QPSK genie MMSE gets systematically worse at high SNR due to a real linear-equalizer noise/ISI "
+    "tradeoff. That conclusion was wrong. design_mmse_equalizer (src/mmse_equalizer.py) computed "
+    "its autocorrelation via np.correlate(g, g), which silently returns the CONJUGATE of the value "
+    "its own documented Wiener-Hopf formula requires -- negligible for BPSK, severe for QPSK/16-QAM. "
+    "Fixed via return np.conj(c_full[idx]), verified against a from-scratch ground-truth solve."
 )
 add_para(doc,
-    "This channel's actual frequency response was computed directly to check that claim (FFT of "
-    "h=[1.0, 0.4+0.3j, -0.1+0.1j]): |H(f)| dips to 0.50 near f≈-0.46 cycles/symbol, a 10.1dB drop "
-    "from the peak (1.61 near f≈+0.15) — a real attenuation region, confirming the mechanism, but "
-    "not a true zero-crossing null as the word originally implied. This sharpens the case for "
-    "CNN — at high SNR for QPSK, it demonstrably exceeds what a linear equalizer can achieve even "
-    "with perfect channel knowledge."
+    "Re-running Case Study 2 at full scale with the fix reverses the finding completely. QPSK genie "
+    "MMSE BER at 10/15/20dB was 0.0193/0.0041/4.9e-4 (38,505/8,312/980 errors of 2,000,000) -- worse "
+    "than every adaptive method, including No-Processing at 20dB (0 errors). AFTER THE FIX: "
+    "1,923/0/0 errors -- MMSE now BEATS every adaptive method at 10dB (CNN: 2,789; LMS: 6,786; "
+    "NLMS: 7,272; No-Processing: 18,692) and TIES CNN and No-Processing at 0 from 15dB onward, "
+    "exactly what a genie with perfect channel and noise knowledge should do. The phase-bias/"
+    "tap-count/frequency-response investigation below was a real, honest attempt to verify an "
+    "anomalous result -- the discipline was right, it just never inspected the one place (the "
+    "autocorrelation's own algebra) where the bug actually lived. This also reverses the original "
+    "\"CNN exceeds the linear-equalizer ceiling\" conclusion: with the bug fixed, CNN ties MMSE at "
+    "high SNR and loses to it at 10dB -- the genie bound is strong, not one CNN casually surpasses."
+)
+add_para(doc,
+    "Original (now-superseded) analysis, preserved for transparency: at low-to-moderate SNR MMSE "
+    "behaved as expected, a real edge over LMS/NLMS. At high SNR for QPSK, the buggy output "
+    "appeared to have zero mean phase error (unbiased) but a real residual phase spread (~16° std) "
+    "large enough to cross QPSK's ±45° boundary while harmless for BPSK's ±180°; increasing taps "
+    "from 16 to 51 changed zero errors, ruling out \"too short a filter\" -- both checks were "
+    "individually sound, neither happened to inspect the actual bug. This channel's frequency "
+    "response was also computed directly (FFT of h=[1.0, 0.4+0.3j, -0.1+0.1j]): |H(f)| dips to 0.50 "
+    "near f≈-0.46 cycles/symbol, a 10.1dB drop from the peak — a real attenuation region, though "
+    "this mechanism is no longer the explanation for the (corrected) finding above."
 )
 
 doc.add_page_break()
@@ -1027,10 +1047,14 @@ add_para(doc,
     "term shrinks, and to recover symbols with zero errors at negligible noise."
 )
 add_callout(doc,
-    "QPSK shows a clean, monotonic ordering that sharpens Section 4.7's existing finding: at 20dB, "
-    "No-Processing has 0 errors, MMSE has 923/2,000,000, and ZF (no noise-awareness at all) has "
-    "1,055/2,000,000 — the WORST of the three, exactly the textbook prediction. BPSK tracks MMSE "
-    "closely at every SNR and reaches zero errors alongside it at 15-20dB."
+    "RE-RUN after fixing Section 4.7's autocorrelation-conjugate bug (this project's eighth), since "
+    "this comparison uses the same equalizer code and was affected identically. BPSK is unchanged "
+    "(tracks MMSE closely, both reach zero errors at 15-20dB). For QPSK, 20dB now ties all three "
+    "methods at 0 errors, so the clearest comparison is at 10dB: MMSE has 1,923/2,000,000 errors, "
+    "ZF has 1,942/2,000,000 -- ZF still (very slightly) the worse of the two genie equalizers, "
+    "exactly the textbook prediction, just at a realistic magnitude (previously: MMSE 38,582, ZF "
+    "45,373 at the same SNR -- both worse than No-Processing's 18,692, which a genie should never "
+    "be). Both genies now comfortably beat No-Processing rather than losing to it."
 )
 add_para(doc,
     "This is not a new, independent mechanism — it is the same linear-equalizer noise-enhancement "
@@ -1064,7 +1088,7 @@ add_callout(doc,
     "capability. At QPSK 10dB, a channel with sign-flipped tap phases degrades CNN BER by 129.71x "
     "relative to its own matched-channel performance (1.65e-3 -> 2.14e-1), while LMS and NLMS on "
     "the IDENTICAL held-out channel degrade only 1.17x and 1.41x. Across all five held-out channels "
-    "at this SNR, CNN degradation ranges 5.16x-129.71x versus LMS/NLMS's tight 0.67x-1.41x band."
+    "at this SNR, CNN degradation ranges 1.22x-129.71x versus LMS/NLMS's tight 0.67x-1.41x band."
 )
 add_para(doc,
     "The held-out channel is objectively somewhat harder for every method (even No-Processing "
@@ -1272,9 +1296,10 @@ add_bullets(doc, [
     "No-Processing hits a genuinely new, hard BER floor (0.0755-0.0814 from 20-30dB) — never seen "
     "for BPSK or QPSK — deterministic ISI alone is enough to permanently cross 16-QAM's tight "
     "margins regardless of noise level.",
-    "The genie MMSE linear equalizer becomes actively WORSE than doing nothing at high SNR "
-    "(0.71-0.74x) — a sharper version of Section 4.7's linear-equalizer-ceiling finding, severe "
-    "enough here to become an outright regression rather than a curiosity.",
+    "CORRECTED: \"the genie MMSE linear equalizer becomes actively WORSE than doing nothing\" was "
+    "this project's eighth real bug (Section 4.7's autocorrelation-conjugate error), not a real "
+    "effect. Re-run with the fix: MMSE errors at 20/25/30dB are 46/46/43 out of 500,000 bits -- "
+    "essentially tied with CNN (30/21/21) and ~880-970x BETTER than No-Processing, not worse.",
 ])
 add_para(doc,
     "Full detail: report/findings_higher_order_modulation.md.", italic=True
@@ -1390,7 +1415,7 @@ rec_rows = [
     ["Genuinely time-varying channel", "LMS-DD (fix SPS>1 bug first); NLMS-DD only with the floor fix",
      "§6.4: LMS-DD beats Frozen by 29-40%; NLMS-DD needs the normalization floor to do the same."],
     ["Closed-form reference, channel knowable", "MMSE over ZF",
-     "§4.10: ZF (no noise-awareness) is consistently the worst of the three linear methods for QPSK."],
+     "§4.10: ZF (no noise-awareness) is consistently the slightly worse of the two genie equalizers for QPSK; both comfortably beat No-Processing."],
     ["Deployment channel may drift from the training channel", "Retrain the CNN on the deployment channel, or budget for degraded BER",
      "§4.11: a CNN frozen on one channel degrades up to 129.71x on a held-out channel (QPSK, 10dB) vs. 1.17-1.41x for LMS/NLMS on the same channel."],
 ]
@@ -1441,7 +1466,7 @@ add_numbered(doc, [
     "testing) materially changed which findings survived scrutiny and should be standard practice.",
     "Definitional identities are a cheap, powerful bug-finder — all three Case Study 2 bugs, plus "
     "the fourth found in Case Study 3, were caught by knowing what a value must equal by definition.",
-    "A regression test suite (tests/, 63 tests) now codifies every invariant found this way.",
+    "A regression test suite (tests/, 68 tests) now codifies every invariant found this way.",
     "A design decision's stated justification can be narrower, or broader, than what was actually "
     "verified — only testing the untested case reveals which (Case Study 3).",
     "A mechanistic explanation is only as strong as the experiment that tests it — the boundary-"
@@ -1484,9 +1509,10 @@ add_numbered(doc, [
     "file — found RLS now matches or beats LMS/NLMS at EVERY SNR level tested, confirming the "
     "original theoretical motivation once given a fair comparison.",
     "A missing standard baseline (Zero-Forcing) was found by searching comparable published work, "
-    "not by re-reading this project's own code — it confirmed the textbook prediction directly: "
-    "ZF (no noise-awareness) is the worst of three linear methods for QPSK at moderate-to-high SNR, "
-    "sharpening rather than contradicting the existing MMSE-regression finding.",
+    "not by re-reading this project's own code — once a later bug fix (see below) corrected both "
+    "genie equalizers' numbers, it confirmed the textbook prediction directly: ZF (no "
+    "noise-awareness) is the slightly worse of the two genie equalizers for QPSK at moderate SNR, "
+    "both comfortably beating No-Processing.",
     "A deliberate adversarial self-critique pass (four independent reviewer agents, each briefed to "
     "find real problems) surfaced a sixth bug (an asymmetric RRC filter, src/signal_gen.py, impact "
     "quantified rather than assumed small), a genuine reporting error in this project's own "
@@ -1504,6 +1530,21 @@ add_numbered(doc, [
     "Section 9.5's practical recommendation: the CNN's advantage is real when training and "
     "deployment channels match, but should not be assumed to survive a channel that drifts from "
     "that training distribution.",
+    "A final code-correctness critique pass found an EIGHTH real bug — and this one had produced a "
+    "wrong conclusion backed by a real, honest, three-part investigation, not just a correlational "
+    "guess. design_mmse_equalizer computed its autocorrelation via np.correlate, which silently "
+    "returns the complex conjugate of the value its own documented Wiener-Hopf formula requires — "
+    "negligible for BPSK, severe for QPSK/16-QAM. This was the actual cause of both the \"QPSK genie "
+    "MMSE gets worse at high SNR\" finding and the \"16-QAM genie MMSE regresses below doing "
+    "nothing\" finding — both previously investigated with real phase-bias, tap-count, and "
+    "frequency-response checks that were each individually correct but collectively missed the one "
+    "place the bug lived. Fixed and re-verified against a from-scratch ground-truth solution; "
+    "re-running Case Study 2, the severity sweep, Case Study 4, and the ZF comparison at full scale "
+    "reverses both findings completely — genie MMSE now ties or beats every method at high SNR for "
+    "QPSK and 16-QAM. Unlike the seventh bug (a since-explained statistical artifact), here every "
+    "individual verification step taken at the time was itself sound — the lesson: a mechanistic "
+    "investigation can rule out several real alternative explanations correctly and still miss the "
+    "actual cause, if it never inspects the specific line of code computing the number in question.",
 ])
 
 doc.add_page_break()
@@ -1557,6 +1598,13 @@ add_bullets(doc, [
     "been re-run and still show pre-fix numbers — Case Study 2, the severity sweep, and Case Study "
     "3's SPS=4 portion use signal lengths that divide the stride exactly and were never affected "
     "regardless of when they were run.",
+    "The autocorrelation-conjugate bug (Sections 4.7/4.10's correction, this project's eighth) "
+    "affects every complex (non-BPSK) use of design_mmse_equalizer/design_zf_equalizer -- unlike the "
+    "seventh bug above, every affected experiment HAS been re-run at full scale, with no remaining "
+    "gap. Case Study 2, the severity sweep, Case Study 4's 16-QAM comparison, and the ZF comparison "
+    "all use this equalizer for QPSK and/or 16-QAM and have all been re-run with the fix; their "
+    "tables and prose throughout this report already reflect the corrected numbers. BPSK-only "
+    "content is unaffected regardless (real symbols mostly mask a conjugate error).",
 ])
 
 add_heading(doc, "Named, Scoped-Out Future Work", level=2)
@@ -1625,7 +1673,7 @@ doc.add_page_break()
 # Appendix
 # ===========================================================================
 add_heading(doc, "Appendix: Project Structure & Regression Test Suite", level=1)
-add_para(doc, "A CI-enforced, 63-test regression suite (tests/, ~40s to run, run automatically on "
+add_para(doc, "A CI-enforced, 68-test regression suite (tests/, ~2.5min to run, run automatically on "
     "every push via GitHub Actions) codifies every invariant discovered during this project:")
 add_bullets(doc, [
     "test_lms_stability.py — LMS/NLMS never diverge below No-Processing; DD mode off by default.",
