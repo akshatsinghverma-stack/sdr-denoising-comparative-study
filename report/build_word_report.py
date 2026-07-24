@@ -525,8 +525,9 @@ add_numbered(doc, [
     "An ISI severity sweep turns the two-case comparison into an actual crossover curve: QPSK at "
     "10dB goes from \"equalization hurts\" at zero ISI to \"equalization helps by 5.6x\" at full "
     "severity.",
-    "A genie-aided linear MMSE equalizer revealed that even perfect linear equalization has a real "
-    "ceiling that a nonlinear CNN demonstrably exceeds at high SNR.",
+    "A genie-aided linear MMSE equalizer was built as a reference bound — an eighth real bug in its "
+    "autocorrelation computation initially made it look like a ceiling CNN could exceed, but once "
+    "fixed, it ties or beats CNN at high SNR, exactly as a genie with perfect channel knowledge should.",
     "Case Study 3 (time-varying channel) tested this project's most load-bearing design decision "
     "— freezing LMS/NLMS after the preamble — and found a fourth bug (the decision-directed safety "
     "gate is dead code at SPS>1) while also refuting the general principle behind that decision: "
@@ -570,9 +571,9 @@ add_numbered(doc, [
     "re-running showed RLS now matches or beats both at every SNR level tested — the original "
     "theoretical motivation confirmed, once RLS is given a fair, equally-hardened comparison.",
     "Zero-Forcing (ZF), a standard equalizer baseline this project was missing, was added after "
-    "searching comparable published work rather than re-reading this project's own code — it "
-    "confirmed the textbook prediction directly, coming in as the worst of three linear methods "
-    "for QPSK at moderate-to-high SNR.",
+    "searching comparable published work rather than re-reading this project's own code — once "
+    "the eighth bug above was fixed, it confirmed the textbook prediction directly: the slightly "
+    "worse of the two genie equalizers for QPSK, both comfortably beating No-Processing.",
 ])
 
 doc.add_page_break()
@@ -1369,12 +1370,13 @@ add_para(doc,
     "trend: 16-QAM's tighter margins push the effect further in the same direction on both ends."
 )
 add_para(doc,
-    "The SNR-vs-BER disconnect recurs three times via three different mechanisms: boundary-blind "
-    "MSE training (Case Study 1), structured non-Gaussian residual dragging down an average SNR "
-    "metric (Case Study 2, CNN), and phase-structured residual error from a linear equalizer's "
-    "noise-enhancement/residual-ISI tradeoff (the genie MMSE bound). One repeated lesson: an "
-    "aggregate SNR or MSE number should not be trusted as a BER proxy without checking the actual "
-    "decision-margin distribution."
+    "The SNR-vs-BER disconnect recurs via two different, independently-verified mechanisms: "
+    "boundary-blind MSE training (Case Study 1) and structured non-Gaussian residual dragging down "
+    "an average SNR metric (Case Study 2, CNN). (A third variant was originally reported here -- "
+    "phase-structured residual error making the genie MMSE bound look disconnected from BER -- but "
+    "that was this project's eighth real bug, not a genuine example; see Section 4.7's correction.) "
+    "One repeated lesson: an aggregate SNR or MSE number should not be trusted as a BER proxy "
+    "without checking the actual decision-margin distribution."
 )
 add_para(doc,
     "Case Study 3 revises how this project talks about its most load-bearing design decision: "
@@ -1473,8 +1475,9 @@ add_numbered(doc, [
     "aware-loss follow-up turned one explanatory sentence into three separately-evidenced sub-"
     "claims.",
     "Decision-boundary crowding is a continuum, not a BPSK/QPSK-specific curiosity — 16-QAM is the "
-    "sharpest point on it tested so far, both for equalization's benefit and the linear-equalizer "
-    "ceiling's cost.",
+    "sharpest point on it tested so far, both for equalization's benefit and for No-Processing's "
+    "un-closeable error floor (the genie MMSE \"ceiling cost\" once suspected here was this "
+    "project's eighth bug, not a real effect — see Section 4.7/7's correction).",
     "Compute cost and BER cost do not move together, and both need to be reported — CNN's 106-212x "
     "compute multiplier is invisible in this project's own wall-clock numbers, which would mislead "
     "anyone judging real-hardware feasibility from them alone.",
@@ -1560,9 +1563,11 @@ add_bullets(doc, [
     "high SNR in Case Study 1 is a direct, quantifiable consequence.",
     "The theoretical Q-function BER curve is valid for Case Study 1 but has been removed (not just "
     "captioned) from Case Study 2's figures, since it is not a bound there.",
-    "The genie MMSE equalizer is a linear, symbol-spaced reference bound, not a universal ceiling — "
-    "Case Study 4 shows this ceiling gets more consequential, not less, as constellation crowding "
-    "increases.",
+    "The genie MMSE equalizer is a linear, symbol-spaced reference bound, not a universal ceiling "
+    "(the fractionally-spaced caveat in Section 4.7 still applies). An earlier version of this "
+    "bullet claimed the ceiling gets more consequential for 16-QAM -- that was this project's "
+    "eighth real bug, corrected: the properly-computed bound stays close to optimal at every "
+    "modulation tested.",
     "The decision-directed reliability gate is dead code for any SPS>1 signal — affects every "
     "experiment using pulse shaping, all of which use the (unaffected-in-practice) default "
     "enable_decision_directed=False.",
@@ -1622,18 +1627,20 @@ add_bullets(doc, [
     "the flat-fading control at SPS=4 once that fix exists.",
     "DONE for 16-QAM (Case Study 4) — a working, self-tested 8-PSK implementation exists but "
     "wasn't run through the full pipeline; also open: root-causing 16-QAM's hard No-Processing "
-    "floor and MMSE regression more precisely.",
-    "DONE — root-cause the loss-independent high-SNR error floor: confirmed as a window/overlap-"
-    "add reconstruction artifact (χ²=168.0, p=3.5×10⁻³⁶). The named fix (triangular overlap-add "
-    "weighting) was tested and did NOT close the floor — a negative result. Still open: whether "
-    "the degradation is baked into the window predictions themselves (a Conv1D receptive-field "
-    "effect) rather than fixable by reweighting the reconstruction.",
+    "floor more precisely (the genie MMSE \"regression\" once suspected here turned out to be "
+    "this project's eighth bug, not a real effect — see Section 4.7/7's correction).",
+    "DONE — root-cause the loss-independent high-SNR error floor: this was first attributed to a "
+    "window/overlap-add reconstruction artifact (χ²=168.0, p=3.5×10⁻³⁶) — a conclusion later found "
+    "to be wrong (this project's seventh bug, a reconstruction zero-fill error, Section 3.7). Still "
+    "open, on the smaller residual that survives the fix at QPSK 10dB: whether it can be closed "
+    "with a wider window or more training data.",
     "DONE — multiple independent training draws: training-draw variance is consistently smaller "
     "than test-time variance (ratio 0.00-0.32x across all 4 conditions tested) — not yet extended "
     "to Hybrid or Case Study 2's ISI channel.",
     "DONE — Zero-Forcing (ZF) as a linear-equalizer baseline, found missing by comparing to "
-    "published literature rather than this project's own code: confirms and sharpens the existing "
-    "QPSK/MMSE high-SNR regression finding.",
+    "published literature rather than this project's own code: once the eighth bug was fixed, "
+    "confirms the textbook prediction (ZF slightly worse than MMSE) at a realistic magnitude, "
+    "rather than the bug-inflated \"regression\" first reported.",
     "Cycle-accurate hardware validation of the compute-cost analysis — the MAC-count-based "
     "throughput requirements were not validated against an actual microcontroller, DSP, or NPU.",
     "A full-scale re-run of Case Studies 2-4 and the severity sweep with the corrected (symmetric) "
@@ -1685,7 +1692,7 @@ add_bullets(doc, [
     "third bug); add_time_varying_multipath is causal, matches the static channel at zero drift, "
     "and correctly fixes the direct path unless vary_direct_path=True (added during the "
     "self-critique pass — previously zero coverage on this function).",
-    "test_mmse_equalizer.py — genie MMSE never loses to No-Processing; ZF converges to MMSE as noise vanishes and recovers symbols near-perfectly at negligible noise (added alongside Section 4.10's ZF follow-up).",
+    "test_mmse_equalizer.py — genie MMSE never loses to No-Processing (now with QPSK coverage, added after the eighth bug went undetected in an all-BPSK suite); ZF converges to MMSE as noise vanishes and recovers symbols near-perfectly at negligible noise; a ground-truth Wiener-Hopf solve directly verifies design_mmse_equalizer's output against a from-scratch reimplementation, the test that would have caught the autocorrelation-conjugate bug (Section 4.7).",
     "test_cnn_autoencoder.py — reconstruct_from_windows' uncovered-tail gap and its fallback fix are locked in with 5 tests (skipped, not failed, when TensorFlow isn't installed, matching this project's lightweight-CI convention) — previously zero coverage on this function, the gap that produced Section 3.7's seventh bug.",
     "test_no_leakage.py — no train/test bit-sequence collisions.",
     "test_metrics.py — BER/error-count consistency, rule-of-three sanity.",
