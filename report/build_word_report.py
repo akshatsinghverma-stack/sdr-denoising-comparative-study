@@ -73,6 +73,41 @@ def set_update_fields_on_open(doc):
     settings.append(uf)
 
 
+def strip_hyperlinks(path):
+    """Unwrap every w:hyperlink element (keeping its text, dropping the wrapper
+    and the navigation it provides) and clear the blue/underline 'Hyperlink'
+    character-style formatting still left on those runs.
+
+    Word's own TablesOfContents.Update() (run via update_word_fields.ps1)
+    wraps every TOC/List of Figures/List of Tables entry in a real navigable
+    hyperlink -- this survives Fields.Unlink() there, since unlinking only
+    flattens FIELD codes, not hyperlink elements. That hyperlink styling and
+    tap-navigation itself was still causing rendering glitches on at least
+    one mobile viewer even after the TOC's fields were made fully static, so
+    it's removed here entirely, leaving plain, unstyled text.
+    """
+    doc = Document(str(path))
+    body = doc.element.body
+    W = qn("w:hyperlink").split("}")[0] + "}"  # the wordprocessingml namespace, e.g. "{...}"
+    for hyperlink in body.findall(f".//{W}hyperlink"):
+        parent = hyperlink.getparent()
+        idx = list(parent).index(hyperlink)
+        for offset, child in enumerate(list(hyperlink)):
+            parent.insert(idx + offset, child)
+        parent.remove(hyperlink)
+    for rpr in body.findall(f".//{W}rPr"):
+        rstyle = rpr.find(f"{W}rStyle")
+        if rstyle is not None and rstyle.get(qn("w:val")) == "Hyperlink":
+            rpr.remove(rstyle)
+        color = rpr.find(f"{W}color")
+        if color is not None:
+            rpr.remove(color)
+        underline = rpr.find(f"{W}u")
+        if underline is not None:
+            rpr.remove(underline)
+    doc.save(str(path))
+
+
 def add_page_number_footer(section):
     footer = section.footer
     p = footer.paragraphs[0] if footer.paragraphs else footer.add_paragraph()
@@ -1745,6 +1780,13 @@ try:
     )
     if result.returncode == 0:
         print(result.stdout.strip())
+        # Word's own TOC-building logic wraps every entry in a real hyperlink,
+        # which survives the field-unlink step above (that only flattens field
+        # codes, not hyperlink elements) -- strip it too, since the hyperlink
+        # styling/navigation itself was still glitching on at least one mobile
+        # viewer even with fully static field content already in place.
+        strip_hyperlinks(OUT_PATH)
+        print(f"Stripped TOC/figure-list hyperlinks (plain text now): {OUT_PATH}")
     else:
         print(f"[WARN] Could not auto-update TOC/figure list fields (exit {result.returncode}): "
               f"{result.stderr.strip()[:300]}\n"
